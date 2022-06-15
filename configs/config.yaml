@@ -1,0 +1,22 @@
+exp_name: example
+
+data:
+  path: "./sim_data.nc"
+
+train:
+  batch_size: 5
+  buffer_size: 2000
+  epoch_size: 20
+  val_subsplits: 5
+  optimizer:
+    type: adam
+  metrics: accuracy
+
+model:
+  input: [128, 128, 3]
+  output: 3
+  up_stack:
+    layer1: 512
+    layer2: 256
+    layer3: 128
+    kernels: 3
