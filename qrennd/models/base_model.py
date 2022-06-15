@@ -1,42 +1,39 @@
 """Abstrace base model class."""
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar
 
-T = TypeVar("T", bound="BaseModel")
+from ..utils import Config
 
 
 class BaseModel(ABC):
-    """Abstract base neural network model."""
+    """Abstract base neura  l network model."""
 
-    def __init__(self: T, config: Any) -> None:
+    def __init__(self, config: Config) -> None:
         """
-        __init__ Initialize the model.
+        __init__ Initializes the model.
 
         Parameters
         ----------
-        self : T
-            BaseModel class
-        config : Any
-            The model configuration
+        config : Config
+            The Config object containing the model hyperparameters.
         """
         self.config = config
 
     @abstractmethod
-    def save(self: T) -> None:
+    def save(self) -> None:
         """Save the model."""
         pass
 
     @abstractmethod
-    def build(self: T) -> None:
+    def build(self) -> None:
         """Build the model."""
         pass
 
     @abstractmethod
-    def train(self: T) -> None:
+    def train(self) -> None:
         """Train the model."""
         pass
 
     @abstractmethod
-    def eval(self: T) -> None:
+    def eval(self) -> None:
         """Evaluate the model."""
         pass
