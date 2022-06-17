@@ -1,0 +1,21 @@
+exp_name: base_model
+
+model:
+  lstm_units: 32
+  eval_units: 32
+  output_units: 1
+
+train:
+  dropout_rate: 0.2
+  l2_factor: 0.00001
+  optimizer:
+    learning_rate: 0.001
+  losses:
+    main_output: "crossentropy"
+    aux_output: "crossentropy"
+  loss_weights:
+    main_output: 1
+    aux_output: 0.5
+  metrics:
+    main_output: "accuracy"
+    aux_output: "accuracy"
