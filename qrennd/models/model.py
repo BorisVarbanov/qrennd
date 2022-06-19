@@ -30,7 +30,8 @@ def get_model(
         The shape of the final (projected) syndrome defects that the main head of the model takes as input.
         The shape is expected to be the tuple (number of ancilla qubits, ).
     config : Config
-        The model configuartion, given as a Config dataclass. The configuation file should define the model property with following keys:
+        The model configuartion, given as a Config dataclass. The configuation file
+        should define the model property with following keys:
             lstm_units - the number of units each LSTM layer uses.
             eval_units - number of units in the hidden evaluation layer.
             output_units - the number of units in the output layer (for binary classification this should be 1).
