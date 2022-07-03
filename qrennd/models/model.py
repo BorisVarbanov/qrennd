@@ -51,12 +51,12 @@ def get_model(
     defects = keras.layers.Input(
         syn_shape,
         dtype="float32",
-        name="Defects",
+        name="defects",
     )
     final_defects = keras.layers.Input(
         shape=proj_syn_shape,
         dtype="float32",
-        name="Final defects",
+        name="final_defects",
     )
 
     lstm_layer = layers.LSTM(
@@ -125,7 +125,7 @@ def get_model(
     model = keras.Model(
         inputs=[defects, final_defects],
         outputs=[main_output, aux_output],
-        name=name or "Decoder model",
+        name=name or "decoder_model",
     )
     optimizer = optimizers.Adam(
         learning_rate=config.train["optimizer"]["learning_rate"]

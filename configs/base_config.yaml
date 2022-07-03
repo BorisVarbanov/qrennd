@@ -11,8 +11,8 @@ train:
   optimizer:
     learning_rate: 0.001
   losses:
-    main_output: "crossentropy"
-    aux_output: "crossentropy"
+    main_output: "binary_crossentropy"
+    aux_output: "binary_crossentropy"
   loss_weights:
     main_output: 1
     aux_output: 0.5
