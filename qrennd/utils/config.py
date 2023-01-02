@@ -19,12 +19,6 @@ class Config:
     summary_dir: Path = field(repr=False, init=False)
     checkpoint_dir: Path = field(repr=False, init=False)
 
-    def __post_init__(self) -> None:
-        """Generate the summary and checkpoints directories."""
-        experiments_dir = Path("../experiments")
-        self.summary_dir = experiments_dir / self.exp_name / "summary"
-        self.checkpoint_dir = experiments_dir / self.exp_name / "checkpoint"
-
     @classmethod
     def from_yaml(cls: Type[T], filename: str) -> T:
         """
