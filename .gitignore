@@ -136,3 +136,9 @@ dmypy.json
 
 # VSCode
 .vscode
+
+# NetCDF
+*.nc
+
+# Tensorboard logs
+.logs/
