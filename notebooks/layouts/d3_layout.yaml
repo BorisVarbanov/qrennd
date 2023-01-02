@@ -1,0 +1,163 @@
+name: Uran device layout.
+description: Layout file for the 17-qubits "Uran" device used for the distance-3 logical quantum memory experiment.
+
+freq_order: ["low", "mid", "high"]
+
+int_order:
+  x_type: ["north_east", "north_west", "south_east", "south_west"]
+  z_type: ["north_east", "south_east", "north_west", "south_west"]
+
+layout:
+  - qubit: D1
+    role: data
+    stab_type: null
+    freq_group: low
+    neighbors:
+      north_west: null
+      north_east: null
+      south_west: Z1
+      south_east: X2
+  - qubit: D2
+    role: data
+    stab_type: null
+    freq_group: low
+    neighbors:
+      north_west: null
+      north_east: X1
+      south_west: X2
+      south_east: Z2
+  - qubit: D3
+    role: data
+    stab_type: null
+    freq_group: low
+    neighbors:
+      north_west: X1
+      north_east: null
+      south_west: Z2
+      south_east: null
+  - qubit: D4
+    role: data
+    stab_type: null
+    freq_group: high
+    neighbors:
+      north_west: Z1
+      north_east: X2
+      south_west: null
+      south_east: Z3
+  - qubit: D5
+    role: data
+    stab_type: null
+    freq_group: high
+    neighbors:
+      north_west: X2
+      north_east: Z2
+      south_west: Z3
+      south_east: X3
+  - qubit: D6
+    role: data
+    stab_type: null
+    freq_group: high
+    neighbors:
+      north_west: Z2
+      north_east: null
+      south_west: X3
+      south_east: Z4
+  - qubit: D7
+    role: data
+    stab_type: null
+    freq_group: low
+    neighbors:
+      north_west: null
+      north_east: Z3
+      south_west: null
+      south_east: X4
+  - qubit: D8
+    role: data
+    stab_type: null
+    freq_group: low
+    neighbors:
+      north_west: Z3
+      north_east: X3
+      south_west: X4
+      south_east: null
+  - qubit: D9
+    role: data
+    stab_type: null
+    freq_group: low
+    neighbors:
+      north_west: X3
+      north_east: Z4
+      south_west: null
+      south_east: null
+  - qubit: X1
+    role: anc
+    stab_type: "x_type"
+    freq_group: mid
+    neighbors:
+      north_west: null
+      north_east: null
+      south_west: D2
+      south_east: D3
+  - qubit: X2
+    role: anc
+    stab_type: "x_type"
+    freq_group: mid
+    neighbors:
+      north_west: D1
+      north_east: D2
+      south_west: D4
+      south_east: D5
+  - qubit: X3
+    role: anc
+    stab_type: "x_type"
+    freq_group: mid
+    neighbors:
+      north_west: D5
+      north_east: D6
+      south_west: D8
+      south_east: D9
+  - qubit: X4
+    role: anc
+    stab_type: "x_type"
+    freq_group: mid
+    neighbors:
+      north_west: D7
+      north_east: D8
+      south_west: null
+      south_east: null
+  - qubit: Z1
+    role: anc
+    stab_type: "z_type"
+    freq_group: mid
+    neighbors:
+      north_west: null
+      north_east: D1
+      south_west: null
+      south_east: D4
+  - qubit: Z2
+    role: anc
+    stab_type: "z_type"
+    freq_group: mid
+    neighbors:
+      north_west: D2
+      north_east: D3
+      south_west: D5
+      south_east: D6
+  - qubit: Z3
+    role: anc
+    stab_type: "z_type"
+    freq_group: mid
+    neighbors:
+      north_west: D4
+      north_east: D5
+      south_west: D7
+      south_east: D8
+  - qubit: Z4
+    role: anc
+    stab_type: "z_type"
+    freq_group: mid
+    neighbors:
+      north_west: D6
+      north_east: null
+      south_west: D9
+      south_east: null
