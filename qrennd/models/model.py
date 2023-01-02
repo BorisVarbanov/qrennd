@@ -1,33 +1,35 @@
 """The 2-layer LSTM RNN model use for the decoder."""
-from typing import Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
+# from tensorflow import keras
+import keras
 import tensorflow as tf
-from tensorflow import keras
 
 from ..utils.config import Config
 
-layers = keras.layers
-optimizers = keras.optimizers
-
 
 def get_model(
-    syn_shape: Tuple[Union[int, None], int],
-    proj_syn_shape: Tuple[int],
+    defects_shape: Tuple[int, ...],
+    final_defects_shape: Tuple[int, ...],
     config: Config,
-    *,
-    name: Optional[str] = None
+    optimizer: Optional[str] = None,
+    loss: Optional[Dict[str, Union[str, Callable]]] = None,
+    loss_weights: Optional[Dict[str, float]] = None,
+    metrics: Optional[Dict[str, str]] = None,
+    name: Optional[str] = None,
 ) -> keras.Model:
     """
-    get_model Build and compile the recurrent neural network model.
+    get_model _summary_
 
     Parameters
     ----------
-    syn_shape : Tuple[Union[int, None], int]
-        The shape of the syndrome defects that the model takes as input.
+    syn_shape : Tuple[int, ...]
+        The shape of the syndrome defects that the main head of the model takes as input.
         The shape is expected to be a tuple of the order (number of QEC rounds, number of ancilla qubits).
         In the case that the number of QEC rounds is a variable, None should be given instead.
-    proj_syn_shape : Tuple[int]
-        The shape of the final (projected) syndrome defects that the main head of the model takes as input.
+    final_syn_shape : Tuple[int, ...]
+        The shape of either the final (projected) syndrome defects or the final data qubit measurement
+        that only the main head of the model takes as input.
         The shape is expected to be the tuple (number of ancilla qubits, ).
     config : Config
         The model configuartion, given as a Config dataclass. The configuation file
@@ -39,6 +41,17 @@ def get_model(
             learning_rate - the learning rate of the Adam optimizer.
             dropout_rate - the dropout rate used after each LSTM layer and the hidden evaluation layer.
             l2_factor - the weight decay factor used to regularize the weights of the hidden evaluation layer.
+    metrics : Optional[Dict[str, str]], optional
+        Optional dictionary specifying the list of built-in metric names to be evaluatted by each model head during
+        trainig and testing, by default None
+    loss : Optional[Dict[str, Union[str, Callable]]], optional
+        Optional dictionary of loss functions given as strings (name of the loss function) or
+        functiton (Callable) for each head, by default None
+    loss_weights : Optional[Dict[str, float]], optional
+        Optional dictionary specifying the scalar coefficients (floats) to weight
+        the loss contribution of each head output, by default None
+    optimizer : Optional[str], optional
+        The model optimizer given as a string (name of optimizer) or optimizer instance, by default None
     name : Optional[str], optional
         The name of the model, by default None
 
@@ -47,45 +60,58 @@ def get_model(
     tensorflow.keras.Model
         The build and compiled model.
     """
+    rate = config.train.get("dropout_rate")
 
     defects = keras.layers.Input(
-        syn_shape,
+        shape=defects_shape,
         dtype="float32",
         name="defects",
     )
+
     final_defects = keras.layers.Input(
-        shape=proj_syn_shape,
+        shape=final_defects_shape,
         dtype="float32",
         name="final_defects",
     )
 
-    lstm_layer = layers.LSTM(
-        config.model["lstm_units"], return_sequences=True, name="LSTM_1"
+    lstm_layer = keras.layers.LSTM(
+        config.model.get("LSTM_units", 64),
+        return_sequences=True,
+        name="LSTM_1",
     )
     output = lstm_layer(defects)
 
-    dropout_layer = layers.Dropout(
-        rate=config.train["dropout_rate"], name="dropout_LSTM_1"
-    )
-    output = dropout_layer(output)
+    if rate is not None:
+        dropout_layer = keras.layers.Dropout(
+            rate=rate,
+            name="dropout_LSTM_1",
+        )
+        output = dropout_layer(output)
 
-    lstm_layer = layers.LSTM(
-        config.model["lstm_units"], return_sequences=False, name="LSTM_2"
+    lstm_layer = keras.layers.LSTM(
+        config.model.get("LSTM_units", 64),
+        return_sequences=False,
+        name="LSTM_2",
     )
     output = lstm_layer(output)
 
-    dropout_layer = layers.Dropout(
-        rate=config.train["dropout_rate"], name="dropout_LSTM_2"
-    )
-    output = dropout_layer(output)
+    if rate is not None:
+        dropout_layer = keras.layers.Dropout(
+            rate=rate,
+            name="dropout_LSTM_2",
+        )
+        output = dropout_layer(output)
 
-    act_layer = layers.Activation("relu", name="relu")
+    act_layer = keras.layers.Activation(
+        activation="relu",
+        name="relu",
+    )
     output = act_layer(output)
 
     concat_input = tf.concat((output, final_defects), axis=1)
 
-    regulizar = keras.regularizers.L2(config.train["l2_factor"])
-    dense_layer = layers.Dense(
+    regulizar = keras.regularizers.L2(l2=config.train["l2_factor"])
+    dense_layer = keras.layers.Dense(
         config.model["eval_units"],
         activation="relu",
         kernel_regularizer=regulizar,
@@ -93,18 +119,22 @@ def get_model(
     )
     main_output = dense_layer(concat_input)
 
-    dropout_layer = layers.Dropout(
-        rate=config.train["dropout_rate"], name="dropout_main_dense"
-    )
-    main_output = dropout_layer(main_output)
+    if rate is not None:
+        dropout_layer = keras.layers.Dropout(
+            rate=rate,
+            name="dropout_main_dense",
+        )
+        main_output = dropout_layer(main_output)
 
-    output_layer = layers.Dense(
-        config.model["output_units"], activation="sigmoid", name="main_output"
+    output_layer = keras.layers.Dense(
+        config.model["output_units"],
+        activation="sigmoid",
+        name="main_output",
     )
     main_output = output_layer(main_output)
 
-    regulizar = keras.regularizers.L2(config.train["l2_factor"])
-    dense_layer = layers.Dense(
+    regulizar = keras.regularizers.L2(l2=config.train["l2_factor"])
+    dense_layer = keras.layers.Dense(
         config.model["eval_units"],
         activation="relu",
         kernel_regularizer=regulizar,
@@ -112,13 +142,17 @@ def get_model(
     )
     aux_output = dense_layer(output)
 
-    dropout_layer = layers.Dropout(
-        rate=config.train["dropout_rate"], name="dropout_aux_dense"
-    )
-    aux_output = dropout_layer(aux_output)
+    if rate is not None:
+        dropout_layer = keras.layers.Dropout(
+            rate=rate,
+            name="dropout_aux_dense",
+        )
+        aux_output = dropout_layer(aux_output)
 
-    dense_layer = layers.Dense(
-        config.model["output_units"], activation="sigmoid", name="aux_output"
+    dense_layer = keras.layers.Dense(
+        config.model["output_units"],
+        activation="sigmoid",
+        name="aux_output",
     )
     aux_output = dense_layer(aux_output)
 
@@ -127,15 +161,28 @@ def get_model(
         outputs=[main_output, aux_output],
         name=name or "decoder_model",
     )
-    optimizer = optimizers.Adam(
-        learning_rate=config.train["optimizer"]["learning_rate"]
-    )
+
+    if optimizer is None:
+        opt_param = config.train.get("optimizer", "adam")
+        if isinstance(opt_param, dict):
+            optimizer = keras.optimizers.Adam(**opt_param)
+        else:
+            optimizer = opt_param
+
+    if loss is None:
+        loss = config.train.get("loss")
+
+    if loss_weights is None:
+        loss_weights = config.train.get("loss_weights")
+
+    if metrics is None:
+        metrics = config.train.get("metrics")
 
     model.compile(
         optimizer=optimizer,
-        loss=config.train["losses"],
-        loss_weights=config.train["loss_weights"],
-        metrics=config.train["metrics"],
+        loss=loss,
+        loss_weights=loss_weights,
+        metrics=metrics,
     )
 
     return model
