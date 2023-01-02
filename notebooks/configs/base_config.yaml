@@ -1,7 +1,7 @@
 exp_name: base_model
 
 model:
-  lstm_units: 32
+  LSTM_units: 32
   eval_units: 32
   output_units: 1
 
@@ -10,7 +10,7 @@ train:
   l2_factor: 0.00001
   optimizer:
     learning_rate: 0.001
-  losses:
+  loss:
     main_output: "binary_crossentropy"
     aux_output: "binary_crossentropy"
   loss_weights:
