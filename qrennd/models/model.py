@@ -9,8 +9,8 @@ from ..utils.config import Config
 
 
 def get_model(
-    defects_shape: Tuple[int, ...],
-    final_defects_shape: Tuple[int, ...],
+    defects_shape: Tuple[Union[int, None], int],
+    final_defects_shape: Tuple[int],
     config: Config,
     optimizer: Optional[str] = None,
     loss: Optional[Dict[str, Union[str, Callable]]] = None,
@@ -23,11 +23,11 @@ def get_model(
 
     Parameters
     ----------
-    syn_shape : Tuple[int, ...]
+    syn_shape : Tuple[Union[int, None], ...]
         The shape of the syndrome defects that the main head of the model takes as input.
         The shape is expected to be a tuple of the order (number of QEC rounds, number of ancilla qubits).
         In the case that the number of QEC rounds is a variable, None should be given instead.
-    final_syn_shape : Tuple[int, ...]
+    final_syn_shape : Tuple[int]
         The shape of either the final (projected) syndrome defects or the final data qubit measurement
         that only the main head of the model takes as input.
         The shape is expected to be the tuple (number of ancilla qubits, ).
