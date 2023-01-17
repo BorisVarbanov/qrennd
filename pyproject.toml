@@ -27,7 +27,7 @@ ipykernel = "^6.13.1"
 jupytext = "^1.13.8"
 scikit-learn = "^1.1.2"
 pydot = "^1.4.2"
-networkx = "^2.8.8"
+qec-util = { git = "https://github.com/BorisVarbanov/qec-util.git", branch = "develop" }
 
 [tool.poetry.dev-dependencies]
 pytest-cov = "^3.0.0"
