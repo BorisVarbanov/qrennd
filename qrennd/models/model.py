@@ -1,8 +1,7 @@
 """The 2-layer LSTM RNN model use for the decoder."""
 from typing import Callable, Dict, Optional, Tuple, Union
 
-# from tensorflow import keras
-import keras
+from tensorflow import keras
 import tensorflow as tf
 
 from ..utils.config import Config
@@ -19,7 +18,7 @@ def get_model(
     name: Optional[str] = None,
 ) -> keras.Model:
     """
-    get_model _summary_
+    get_model Returns the RNN decoder model.
 
     Parameters
     ----------
