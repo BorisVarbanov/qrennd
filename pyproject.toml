@@ -48,6 +48,10 @@ xdoctest = "^1.0.0"
 darglint = "^1.8.1"
 codecov = "^2.1.12"
 pytest = "^7.1.2"
+pre-commit = "^3.0.0"
+isort = "^5.11.4"
+
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
