@@ -2,7 +2,7 @@
 from typing import Callable, Dict, Optional, Tuple, Union
 
 from tensorflow import keras
-import tensorflow as tf
+from tensorflow import concat
 
 from ..utils.config import Config
 
@@ -107,7 +107,7 @@ def get_model(
     )
     output = act_layer(output)
 
-    concat_input = tf.concat((output, final_defects), axis=1)
+    concat_input = concat((output, final_defects), axis=1)
 
     regulizar = keras.regularizers.L2(l2=config.train["l2_factor"])
     dense_layer = keras.layers.Dense(
