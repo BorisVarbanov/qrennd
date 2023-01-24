@@ -142,3 +142,6 @@ dmypy.json
 
 # Tensorboard logs
 .logs/
+
+# DS_Store
+.DS_Store
