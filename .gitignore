@@ -145,3 +145,6 @@ dmypy.json
 
 # DS_Store
 .DS_Store
+
+# Jupyter notebooks (only .py files are committed, sync carried out by jupytext)
+*.ipynb
