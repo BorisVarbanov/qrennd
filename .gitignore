@@ -148,3 +148,13 @@ dmypy.json
 
 # Jupyter notebooks (only .py files are committed, sync carried out by jupytext)
 *.ipynb
+
+# Decoder weights
+*.hdf5
+
+# Stim files
+*.stim
+*.dem
+
+# Tensorboard logs
+events.out.tfevents*.v2
