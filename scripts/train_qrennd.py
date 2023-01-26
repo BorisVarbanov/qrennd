@@ -5,7 +5,7 @@ from datetime import datetime
 
 import xarray as xr
 from qec_util import Layout
-from qec_util.util.syndrome import get_defects, get_final_defects, get_syndromes
+from qec_util.util.syndrome import get_defects, get_syndromes
 import tensorflow as tf
 
 from qrennd import Config, get_model
@@ -38,7 +38,6 @@ def preprocess_data(dataset, data_input="defects"):
         )
 
     outputs = log_errors.values
-
     return inputs, outputs
 
 
@@ -105,6 +104,10 @@ MIN_DELTA = 0
 # Define used directories
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
 
+# USERNAME = "bmvarbanov"
+# SCRATH_DIR = pathlib.Path("/scratch/{USERNAME}")
+SCRATH_DIR = NOTEBOOK_DIR
+
 LAYOUT_DIR = NOTEBOOK_DIR / "layouts"
 if not LAYOUT_DIR.exists():
     raise ValueError("Layout directory does not exist.")
@@ -115,17 +118,19 @@ if not CONFIG_DIR.exists():
 
 # The train/dev/test data directories are located in the local data directory
 # experiment folder
-EXP_DIR = NOTEBOOK_DIR / "data" / EXP_NAME
+EXP_DIR = SCRATH_DIR / "data" / EXP_NAME
 if not EXP_DIR.exists():
     raise ValueError("Experiment directory does not exist.")
 
 cur_datetime = datetime.now()
 datetime_str = cur_datetime.strftime("%Y%m%d-%H%M%S")
 
-LOG_DIR = NOTEBOOK_DIR / f"logs/{datetime_str}"
+OUTPUT_DIR = SCRATH_DIR / "output" / EXP_NAME
+
+LOG_DIR = OUTPUT_DIR / f"logs/{datetime_str}"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-CHECKPOINT_DIR = NOTEBOOK_DIR / "tmp/checkpoint"
+CHECKPOINT_DIR = OUTPUT_DIR / "tmp/checkpoint"
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -164,10 +169,9 @@ model = get_model(
 # %%
 callbacks = [
     tf.keras.callbacks.ModelCheckpoint(
-        filepath=CHECKPOINT_DIR / "weights.hdf5",
+        filepath=CHECKPOINT_DIR / "weights-{epoch:02d}-{val_loss:.2f}.hdf5",
         monitor="val_loss",
         mode="min",
-        save_best_only=True,
     ),
     tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR),
     tf.keras.callbacks.EarlyStopping(
@@ -175,6 +179,10 @@ callbacks = [
         mode="min",
         min_delta=MIN_DELTA,
         patience=PATIENCE,
+    ),
+    tf.keras.callbacks.CSVLogger(
+        filename=LOG_DIR / "training.log",
+        append=False,
     ),
 ]
 
@@ -189,3 +197,5 @@ history = model.fit(
     callbacks=callbacks,
 )
 
+# %%
+model.save(CHECKPOINT_DIR / "weights.hdf5")
