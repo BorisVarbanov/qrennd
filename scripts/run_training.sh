@@ -7,8 +7,6 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus-per-task=1
 #SBATCH --mem-per-cpu=1G
-#SBATCH --output=/scratch/bmvarbanov/.log/qrennd/train_%j.out
-#SBATCH --error=/scratch/bmvarbanov/.log/qrennd/train_%j.err
 #SBATCH --mail-user=b.m.varbanov@tudelft.nl
 #SBATCH --mail-type=END,FAIL
 
