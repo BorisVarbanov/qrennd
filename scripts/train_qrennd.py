@@ -104,9 +104,9 @@ MIN_DELTA = 0
 # Define used directories
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
 
-# USERNAME = "bmvarbanov"
-# SCRATH_DIR = pathlib.Path("/scratch/{USERNAME}")
-SCRATH_DIR = NOTEBOOK_DIR
+USERNAME = "bmvarbanov"
+SCRATH_DIR = pathlib.Path("/scratch/{USERNAME}")
+#SCRATH_DIR = NOTEBOOK_DIR
 
 LAYOUT_DIR = NOTEBOOK_DIR / "layouts"
 if not LAYOUT_DIR.exists():
