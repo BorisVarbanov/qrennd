@@ -105,7 +105,7 @@ MIN_DELTA = 0
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
 
 USERNAME = "bmvarbanov"
-SCRATH_DIR = pathlib.Path("/scratch/{USERNAME}")
+SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
 # SCRATH_DIR = NOTEBOOK_DIR
 
 LAYOUT_DIR = NOTEBOOK_DIR / "layouts"
