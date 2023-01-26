@@ -5,7 +5,7 @@ name = "absl-py"
 version = "1.4.0"
 description = "Abseil Python Common Libraries, see https://github.com/abseil/abseil-py."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "absl-py-1.4.0.tar.gz", hash = "sha256:d2c244d01048ba476e7c080bd2c6df5e141d211de80223460d5b3b8a2a58433d"},
@@ -153,7 +153,7 @@ name = "astunparse"
 version = "1.6.3"
 description = "An AST unparser for Python"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "astunparse-1.6.3-py2.py3-none-any.whl", hash = "sha256:c2652417f2c8b5bb325c885ae329bdf3f86424075c4fd1a128674bc6fba4b8e8"},
@@ -311,7 +311,7 @@ name = "cachetools"
 version = "5.3.0"
 description = "Extensible memoizing collections and decorators"
 category = "main"
-optional = false
+optional = true
 python-versions = "~=3.7"
 files = [
     {file = "cachetools-5.3.0-py3-none-any.whl", hash = "sha256:429e1a1e845c008ea6c85aa35d4b98b65d6a9763eeef3e37e92728a12d1de9d4"},
@@ -617,7 +617,7 @@ name = "contourpy"
 version = "1.0.7"
 description = "Python library for calculating contours of 2D quadrilateral grids"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "contourpy-1.0.7-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:95c3acddf921944f241b6773b767f1cbce71d03307270e2d769fd584d5d1092d"},
@@ -758,7 +758,7 @@ name = "cycler"
 version = "0.11.0"
 description = "Composable style cycles"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "cycler-0.11.0-py3-none-any.whl", hash = "sha256:3a27e95f763a428a739d2add979fa7494c912a32c17c4c38c4d5f082cad165a3"},
@@ -1068,7 +1068,7 @@ name = "flatbuffers"
 version = "23.1.21"
 description = "The FlatBuffers serialization format for Python"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "flatbuffers-23.1.21-py2.py3-none-any.whl", hash = "sha256:2e4101b291b14f21e87ea20b7bf7127b11563f6084e352d2d708bddd545c9265"},
@@ -1080,7 +1080,7 @@ name = "fonttools"
 version = "4.38.0"
 description = "Tools to manipulate font files"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "fonttools-4.38.0-py3-none-any.whl", hash = "sha256:820466f43c8be8c3009aef8b87e785014133508f0de64ec469e4efb643ae54fb"},
@@ -1118,7 +1118,7 @@ name = "gast"
 version = "0.4.0"
 description = "Python AST that abstracts the underlying Python version"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
     {file = "gast-0.4.0-py3-none-any.whl", hash = "sha256:b7adcdd5adbebf1adf17378da5ba3f543684dbec47b1cda1f3997e573cd542c4"},
@@ -1160,7 +1160,7 @@ name = "google-auth"
 version = "2.16.0"
 description = "Google Authentication Library"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
 files = [
     {file = "google-auth-2.16.0.tar.gz", hash = "sha256:ed7057a101af1146f0554a769930ac9de506aeca4fd5af6543ebe791851a9fbd"},
@@ -1185,7 +1185,7 @@ name = "google-auth-oauthlib"
 version = "0.4.6"
 description = "Google Authentication Library"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "google-auth-oauthlib-0.4.6.tar.gz", hash = "sha256:a90a072f6993f2c327067bf65270046384cda5a8ecb20b94ea9a687f1f233a7a"},
@@ -1204,7 +1204,7 @@ name = "google-pasta"
 version = "0.2.0"
 description = "pasta is an AST-based Python refactoring library"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "google-pasta-0.2.0.tar.gz", hash = "sha256:c9f2c8dfc8f96d0d5808299920721be30c9eec37f2389f28904f454565c8a16e"},
@@ -1220,7 +1220,7 @@ name = "grpcio"
 version = "1.51.1"
 description = "HTTP/2-based RPC framework"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "grpcio-1.51.1-cp310-cp310-linux_armv7l.whl", hash = "sha256:cc2bece1737b44d878cc1510ea04469a8073dbbcdd762175168937ae4742dfb3"},
@@ -1278,7 +1278,7 @@ name = "h5py"
 version = "3.8.0"
 description = "Read and write HDF5 files from Python"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "h5py-3.8.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:533d7dad466ddb7e3b30af274b630eb7c1a6e4ddf01d1c373a0334dc2152110a"},
@@ -1773,7 +1773,7 @@ name = "keras"
 version = "2.11.0"
 description = "Deep learning for humans."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "keras-2.11.0-py2.py3-none-any.whl", hash = "sha256:38c6fff0ea9a8b06a2717736565c92a73c8cd9b1c239e7125ccb188b7848f65e"},
@@ -1784,7 +1784,7 @@ name = "kiwisolver"
 version = "1.4.4"
 description = "A fast implementation of the Cassowary constraint solver"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "kiwisolver-1.4.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:2f5e60fabb7343a836360c4f0919b8cd0d6dbf08ad2ca6b9cf90bf0c76a3c4f6"},
@@ -1862,7 +1862,7 @@ name = "libclang"
 version = "15.0.6.1"
 description = "Clang Python Bindings, mirrored from the official LLVM repo: https://github.com/llvm/llvm-project/tree/main/clang/bindings/python, to make the installation process easier."
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "libclang-15.0.6.1-py2.py3-none-macosx_10_9_x86_64.whl", hash = "sha256:8621795e07b87e17fc7aac9f071bc7fe6b52ed6110c0a96a9975d8113c8c2527"},
@@ -1880,7 +1880,7 @@ name = "markdown"
 version = "3.4.1"
 description = "Python implementation of Markdown."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "Markdown-3.4.1-py3-none-any.whl", hash = "sha256:08fb8465cffd03d10b9dd34a5c3fea908e20391a2a90b88d66362cb05beed186"},
@@ -1955,7 +1955,7 @@ name = "matplotlib"
 version = "3.6.3"
 description = "Python plotting package"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "matplotlib-3.6.3-cp310-cp310-macosx_10_12_universal2.whl", hash = "sha256:80c166a0e28512e26755f69040e6bf2f946a02ffdb7c00bf6158cca3d2b146e6"},
@@ -2283,7 +2283,7 @@ name = "networkx"
 version = "3.0"
 description = "Python package for creating and manipulating graphs and networks"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "networkx-3.0-py3-none-any.whl", hash = "sha256:58058d66b1818043527244fab9d41a51fcd7dcc271748015f3c181b8a90c8e2e"},
@@ -2408,7 +2408,7 @@ name = "oauthlib"
 version = "3.2.2"
 description = "A generic, spec-compliant, thorough implementation of the OAuth request-signing logic"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "oauthlib-3.2.2-py3-none-any.whl", hash = "sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca"},
@@ -2425,7 +2425,7 @@ name = "opt-einsum"
 version = "3.3.0"
 description = "Optimizing numpys einsum function"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.5"
 files = [
     {file = "opt_einsum-3.3.0-py3-none-any.whl", hash = "sha256:2455e59e3947d3c275477df7f5205b30635e266fe6dc300e3d9f9646bfcea147"},
@@ -2580,7 +2580,7 @@ name = "pillow"
 version = "9.4.0"
 description = "Python Imaging Library (Fork)"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "Pillow-9.4.0-1-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:1b4b4e9dda4f4e4c4e6896f93e84a8f0bcca3b059de9ddf67dac3c334b1195e1"},
@@ -2745,7 +2745,7 @@ name = "protobuf"
 version = "3.19.6"
 description = "Protocol Buffers"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.5"
 files = [
     {file = "protobuf-3.19.6-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:010be24d5a44be7b0613750ab40bc8b8cedc796db468eae6c779b395f50d1fa1"},
@@ -2834,7 +2834,7 @@ name = "pyasn1"
 version = "0.4.8"
 description = "ASN.1 types and codecs"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "pyasn1-0.4.8-py2.py3-none-any.whl", hash = "sha256:39c7e2ec30515947ff4e87fb6f456dfc6e84857d34be479c9d4a4ba4bf46aa5d"},
@@ -2846,7 +2846,7 @@ name = "pyasn1-modules"
 version = "0.2.8"
 description = "A collection of ASN.1-based protocols modules."
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "pyasn1-modules-0.2.8.tar.gz", hash = "sha256:905f84c712230b2c592c19470d3ca8d552de726050d1d1716282a1f6146be65e"},
@@ -2930,7 +2930,7 @@ name = "pyparsing"
 version = "3.0.9"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6.8"
 files = [
     {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
@@ -3244,7 +3244,7 @@ name = "qec-util"
 version = "0.1.0"
 description = "A utility package for Quantum Error Correction experiments"
 category = "main"
-optional = false
+optional = true
 python-versions = "^3.10"
 files = []
 develop = false
@@ -3333,7 +3333,7 @@ name = "requests-oauthlib"
 version = "1.3.1"
 description = "OAuthlib authentication support for Requests."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
     {file = "requests-oauthlib-1.3.1.tar.gz", hash = "sha256:75beac4a47881eeb94d5ea5d6ad31ef88856affe2332b9aafb52c6452ccf0d7a"},
@@ -3379,7 +3379,7 @@ name = "rsa"
 version = "4.9"
 description = "Pure-Python RSA implementation"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6,<4"
 files = [
     {file = "rsa-4.9-py3-none-any.whl", hash = "sha256:90260d9058e514786967344d0ef75fa8727eed8a7d2e43ce9f4bcf1b536174f7"},
@@ -3730,7 +3730,7 @@ name = "tensorboard"
 version = "2.11.2"
 description = "TensorBoard lets you watch Tensors Flow"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "tensorboard-2.11.2-py3-none-any.whl", hash = "sha256:cbaa2210c375f3af1509f8571360a19ccc3ded1d9641533414874b5deca47e89"},
@@ -3756,7 +3756,7 @@ name = "tensorboard-data-server"
 version = "0.6.1"
 description = "Fast data loading for TensorBoard"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "tensorboard_data_server-0.6.1-py3-none-any.whl", hash = "sha256:809fe9887682d35c1f7d1f54f0f40f98bb1f771b14265b453ca051e2ce58fca7"},
@@ -3769,7 +3769,7 @@ name = "tensorboard-plugin-wit"
 version = "1.8.1"
 description = "What-If Tool TensorBoard plugin."
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "tensorboard_plugin_wit-1.8.1-py3-none-any.whl", hash = "sha256:ff26bdd583d155aa951ee3b152b3d0cffae8005dc697f72b44a8e8c2a77a8cbe"},
@@ -3780,7 +3780,7 @@ name = "tensorflow"
 version = "2.11.0"
 description = "TensorFlow is an open source machine learning framework for everyone."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "tensorflow-2.11.0-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:6c049fec6c2040685d6f43a63e17ccc5d6b0abc16b70cc6f5e7d691262b5d2d0"},
@@ -3829,7 +3829,7 @@ name = "tensorflow-estimator"
 version = "2.11.0"
 description = "TensorFlow Estimator."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "tensorflow_estimator-2.11.0-py2.py3-none-any.whl", hash = "sha256:ea3b64acfff3d9a244f06178c9bdedcbdd3f125b67d0888dba8229498d06468b"},
@@ -3840,7 +3840,7 @@ name = "tensorflow-io-gcs-filesystem"
 version = "0.30.0"
 description = "TensorFlow IO"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7, <3.12"
 files = [
     {file = "tensorflow_io_gcs_filesystem-0.30.0-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:f5aa1aa0ec88b7d309ebf520c950ed12894ec1908c3d7335f080de9e16e88360"},
@@ -3876,7 +3876,7 @@ name = "termcolor"
 version = "2.2.0"
 description = "ANSI color formatting for output in terminal"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "termcolor-2.2.0-py3-none-any.whl", hash = "sha256:91ddd848e7251200eac969846cbae2dacd7d71c2871e92733289e7e3666f48e7"},
@@ -4113,7 +4113,7 @@ name = "werkzeug"
 version = "2.2.2"
 description = "The comprehensive WSGI web application library."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "Werkzeug-2.2.2-py3-none-any.whl", hash = "sha256:f979ab81f58d7318e064e99c4506445d60135ac5cd2e177a2de0089bfd4c9bd5"},
@@ -4131,7 +4131,7 @@ name = "wheel"
 version = "0.38.4"
 description = "A built-package format for Python"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "wheel-0.38.4-py3-none-any.whl", hash = "sha256:b60533f3f5d530e971d6737ca6d58681ee434818fab630c83a734bb10c083ce8"},
@@ -4158,7 +4158,7 @@ name = "wrapt"
 version = "1.14.1"
 description = "Module for decorators, wrappers and monkey patching."
 category = "main"
-optional = false
+optional = true
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 files = [
     {file = "wrapt-1.14.1-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:1b376b3f4896e7930f1f772ac4b064ac12598d1c38d04907e696cc4d794b43d3"},
@@ -4280,8 +4280,10 @@ tests-strict = ["cmake (==3.21.2)", "codecov (==2.0.15)", "ninja (==1.10.2)", "p
 
 [extras]
 notebook = ["numpy", "scipy", "matplotlib", "seaborn", "jupyter", "ipykernel"]
+qec-util = ["qec-util"]
+tensorflow = ["tensorflow"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "681ec0734eb4e452343dfb84d1b0226823769d3762f010987303e0cc25a296cc"
+content-hash = "61299ba0eeba0d36486dd8195fb4c01c00238ce2c467677b064a8ba25d096323"

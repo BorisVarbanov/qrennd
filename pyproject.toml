@@ -15,7 +15,7 @@ python = "~3.10"
 xarray = "^2022.3.0"
 PyYAML = "^6.0"
 netCDF4 = "^1.5.8"
-qec-util = {git = "https://github.com/BorisVarbanov/qec-util.git", branch = "develop"}
+qec-util = {git = "https://github.com/BorisVarbanov/qec-util.git", branch = "develop", optional = true}
 tensorflow = {version = "^2.9.1", optional = true}
 numpy = {version = "^1.22.4", optional = true}
 scipy = {version = "^1.8.1", optional = true}
@@ -27,6 +27,7 @@ ipykernel = {version = "^6.13.1",  optional = true}
 [tool.poetry.extras]
 notebook = ["numpy", "scipy", "matplotlib", "seaborn", "jupyter", "ipykernel"]
 tensorflow = ["tensorflow"]
+qec-util = ["qec-util"]
 
 [tool.poetry.dev-dependencies]
 pytest-cov = "^3.0.0"
