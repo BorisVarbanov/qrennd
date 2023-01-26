@@ -96,7 +96,7 @@ NUM_DEV_ROUNDS = 20
 DEV_ROUNDS = list(range(1, NUM_DEV_ROUNDS + 1, 2))
 
 BATCH_SIZE = 64
-NUM_EPOCHS = 10
+NUM_EPOCHS = 500
 PATIENCE = 20
 MIN_DELTA = 0
 
@@ -106,7 +106,7 @@ NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is place
 
 USERNAME = "bmvarbanov"
 SCRATH_DIR = pathlib.Path("/scratch/{USERNAME}")
-#SCRATH_DIR = NOTEBOOK_DIR
+# SCRATH_DIR = NOTEBOOK_DIR
 
 LAYOUT_DIR = NOTEBOOK_DIR / "layouts"
 if not LAYOUT_DIR.exists():
