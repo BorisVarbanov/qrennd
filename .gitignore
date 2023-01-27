@@ -157,4 +157,14 @@ dmypy.json
 *.dem
 
 # Tensorboard logs
-events.out.tfevents*.v2
+events.out.tfevents*
+
+# Tensorflow profiler outputs
+*.xplane.pb
+*.kernel_states.pb
+*.trace.json.gz
+*.tensorflow_stats.pb
+*.overview_page.pb
+*.memory_profile.json.gz
+*.kernel_stats.pb
+*.input_pipeline.pb
