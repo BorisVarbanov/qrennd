@@ -12,7 +12,7 @@ keywords = ["quantum", "error correction", "neural network"]
 
 [tool.poetry.dependencies]
 python = "3.8.12"
-numpy = "1.19.4"
+numpy = "1.19.5"
 xarray = "0.21.1"
 pyyaml = "^6.0"
 netcdf4 = "^1.6.2"
@@ -21,7 +21,6 @@ matplotlib = {version = "^3.6.3", optional = true}
 jupyter = {version = "^1.0.0", optional = true}
 ipykernel = {version = "^6.20.2", optional = true}
 tensorflow = {version = "2.4.1", optional = true}
-keras = "^2.11.0"
 
 [tool.poetry.extras]
 plotting = ["matplotlib"]
