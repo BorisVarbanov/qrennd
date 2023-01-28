@@ -50,15 +50,15 @@ CONFIG_FILE = "base_config.yaml"
 DATA_INPUT = "defects"
 
 NUM_TRAIN_SHOTS = 10000
-NUM_TRAIN_ROUNDS = 20
+NUM_TRAIN_ROUNDS = 19
 
 NUM_DEV_SHOTS = 1000
-NUM_DEV_ROUNDS = 20
+NUM_DEV_ROUNDS = 19
 
 LOG_STATES = range(2)
 
 BATCH_SIZE = 64
-NUM_EPOCHS = 500
+NUM_EPOCHS = 10
 PATIENCE = 20
 MIN_DELTA = 0
 
@@ -139,9 +139,10 @@ model = get_model(
 # %%
 callbacks = [
     tf.keras.callbacks.ModelCheckpoint(
-        filepath=CHECKPOINT_DIR / "weights-{epoch:02d}-{val_loss:.2f}.hdf5",
+        filepath=CHECKPOINT_DIR / "weights-{epoch:02d}-{val_loss:.5f}.hdf5",
         monitor="val_loss",
         mode="min",
+        save_best_only=True
     ),
     tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR),
     tf.keras.callbacks.EarlyStopping(
