@@ -2,11 +2,11 @@
 #
 #SBATCH --job-name="qrennd-train-test"
 #SBATCH --partition=gpu
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus-per-task=1
-#SBATCH --mem-per-cpu=3G
+#SBATCH --mem-per-cpu=2G
 #SBATCH --mail-user=b.m.varbanov@tudelft.nl
 #SBATCH --mail-type=END,FAIL
 #SBATCH --output=train_qrennd.%j.out
