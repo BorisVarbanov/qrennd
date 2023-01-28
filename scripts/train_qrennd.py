@@ -7,6 +7,7 @@ import tensorflow as tf
 import xarray as xr
 
 from qrennd import Config, Layout, get_model
+from qrennd.callbacks.profilers import EpochRuntime
 from qrennd.utils.data_processing import get_defects, get_syndromes
 
 
@@ -58,7 +59,7 @@ NUM_DEV_ROUNDS = 19
 LOG_STATES = range(2)
 
 BATCH_SIZE = 64
-NUM_EPOCHS = 1000
+NUM_EPOCHS = 10
 PATIENCE = 20
 MIN_DELTA = 0
 
@@ -68,7 +69,7 @@ NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is place
 
 USERNAME = "bmvarbanov"
 SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
-# SCRATH_DIR = NOTEBOOK_DIR
+SCRATH_DIR = NOTEBOOK_DIR
 
 LAYOUT_DIR = NOTEBOOK_DIR / "layouts"
 if not LAYOUT_DIR.exists():
@@ -137,24 +138,30 @@ model = get_model(
 
 
 # %%
+model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=CHECKPOINT_DIR / "weights-{epoch:02d}-{val_loss:.5f}.hdf5",
+    monitor="val_loss",
+    mode="min",
+    save_best_only=True
+)
+tensorboard = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR)
+early_stop = tf.keras.callbacks.EarlyStopping(
+    monitor="val_loss",
+    mode="min",
+    min_delta=MIN_DELTA,
+    patience=PATIENCE,
+)
+csv_logs = tf.keras.callbacks.CSVLogger(
+    filename=LOG_DIR / "training.log",
+    append=False
+)
+epoch_runtime = EpochRuntime()
+
 callbacks = [
-    tf.keras.callbacks.ModelCheckpoint(
-        filepath=CHECKPOINT_DIR / "weights-{epoch:02d}-{val_loss:.5f}.hdf5",
-        monitor="val_loss",
-        mode="min",
-        save_best_only=True
-    ),
-    tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR),
-    tf.keras.callbacks.EarlyStopping(
-        monitor="val_loss",
-        mode="min",
-        min_delta=MIN_DELTA,
-        patience=PATIENCE,
-    ),
-    tf.keras.callbacks.CSVLogger(
-        filename=LOG_DIR / "training.log",
-        append=False,
-    ),
+    model_checkpoint,
+    early_stop,
+    csv_logs,
+    epoch_runtime
 ]
 
 
