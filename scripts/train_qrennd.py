@@ -41,41 +41,24 @@ def preprocess_data(dataset, data_input="defects"):
     return inputs, outputs
 
 
-def generate_dataset(folder, num_shots, exp_rounds, data_input):
-    input_defects = []
-    input_final_defects = []
-    outputs = []
-
+def generate_dataset(folder, num_shots, nums_rounds, data_input):
     log_states = [0, 1]
 
-    for num_rounds in exp_rounds:
+    exp_datasets = []
+    for num_rounds in nums_rounds:
         datasets = []
         for log_state in log_states:
             exp_label = f"surf-code_d3_bZ_s{log_state}_n{num_shots}_r{num_rounds}"
             dataset = xr.load_dataset(folder / exp_label / "measurements.nc")
             datasets.append(dataset)
 
-        dataset = xr.concat(datasets, dim="log_state")
-        dataset = dataset.stack(run=["log_state", "shot"])
+        exp_dataset = xr.concat(datasets, dim="log_state")
+        exp_datasets.append(exp_dataset)
 
-        input_, output_ = preprocess_data(dataset, data_input=data_input)
-
-        defects = tf.constant(input_["defects"])
-        input_defects.append(tf.RaggedTensor.from_tensor(defects))
-
-        final_defects = tf.constant(input_["final_defects"])
-        input_final_defects.append(final_defects)
-
-        output = tf.constant(output_)
-        outputs.append(output)
-
-    input_defects = tf.concat(input_defects, axis=0)
-    input_final_defects = tf.concat(input_final_defects, axis=0)
-    outputs = tf.concat(outputs, axis=0)
-
-    inputs = dict(defects=input_defects, final_defects=input_final_defects)
-
-    return inputs, outputs
+    dataset = xr.concat(exp_datasets, dim="num_rounds", fill_value=False)
+    dataset = dataset.stack(run=["log_state", "shot", "num_rounds"])
+    input, output = preprocess_data(dataset, data_input=data_input)
+    return input, output
 
 
 # %%
@@ -95,8 +78,6 @@ NUM_VAL_SHOTS = 1000
 NUM_VAL_ROUNDS = 20
 VAL_ROUNDS = list(range(1, NUM_VAL_ROUNDS + 1, 2))
 
-LOG_STATES = [0, 1]
-
 BATCH_SIZE = 64
 NUM_EPOCHS = 1000
 PATIENCE = 20
@@ -108,7 +89,7 @@ NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is place
 
 USERNAME = "bmvarbanov"
 SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
-# SCRATH_DIR = NOTEBOOK_DIR
+#SCRATH_DIR = NOTEBOOK_DIR
 
 LAYOUT_DIR = NOTEBOOK_DIR / "layouts"
 if not LAYOUT_DIR.exists():
@@ -142,41 +123,17 @@ layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
 config = Config.from_yaml(CONFIG_DIR / CONFIG_FILE)
 
 # %%
-"""
-datasets = []
-for log_state in LOG_STATES:
-    exp_label = f"surf-code_d3_bZ_s{log_state}_n{NUM_TRAIN_SHOTS}_r{NUM_TRAIN_ROUNDS}"
-    dataset = xr.load_dataset(EXP_DIR / "train" / exp_label / "measurements.nc")
-    datasets.append(dataset)
-
-dataset = xr.concat(datasets, dim="log_state")
-dataset = dataset.stack(run=["log_state", "shot"])
-
-train_input, train_output = preprocess_data(dataset, data_input=DATA_INPUT)
-
-datasets = []
-for log_state in LOG_STATES:
-    exp_label = f"surf-code_d3_bZ_s{log_state}_n{NUM_DEV_SHOTS}_r{NUM_DEV_ROUNDS}"
-    dataset = xr.load_dataset(EXP_DIR / "dev" / exp_label / "measurements.nc")
-    datasets.append(dataset)
-
-dataset = xr.concat(datasets, dim="log_state")
-dataset = dataset.stack(run=["log_state", "shot"])
-
-dev_input, dev_output = preprocess_data(dataset, data_input=DATA_INPUT)
-"""
-
 train_input, train_output = generate_dataset(
     folder=EXP_DIR / "train",
     num_shots=NUM_TRAIN_SHOTS,
-    exp_rounds=TRAIN_ROUNDS,
+    nums_rounds=TRAIN_ROUNDS,
     data_input=DATA_INPUT,
 )
 
 dev_input, dev_output = generate_dataset(
     folder=EXP_DIR / "dev",
     num_shots=NUM_VAL_SHOTS,
-    exp_rounds=VAL_ROUNDS,
+    nums_rounds=VAL_ROUNDS,
     data_input=DATA_INPUT,
 )
 
