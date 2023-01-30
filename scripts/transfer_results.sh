@@ -1,22 +1,15 @@
 #!/bin/sh
 #
-#SBATCH --job-name="transfer_train_result"
+#SBATCH --job-name="transfer_output"
 #SBATCH --partition=trans
-#SBATCH --time=00:15:00
+#SBATCH --time=00:30:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
+#SBATCH --account=research-qutech-qcd
 
-results=(
- 'sim-output'
- 'parameter-files'
- 'output.txt'
- 'err.txt'
-)
+exp_name = "20230117-d3_rot-surf_circ-level_test-train"
 
-source="/scratch/${USER}/MySimulation"
-destination='/tudelft.net/staff-umbrella/MyProject/DelftBlueResults/'
+source="/scratch/${USER}/output/"
+destination='/tudelft.net/staff-umbrella/qrennd/output/'
 
-for result in "${results[@]}"
-do
-  rsync -av --no-perms "${source}/${result}" "${destination}"
-done
+rsync -av --no-perms "${source}/${exp_name}" "${destination}/${exp_name}"
