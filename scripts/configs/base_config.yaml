@@ -7,9 +7,9 @@ model:
 
 train:
   dropout_rate: 0.2
-  l2_factor: 0.00001
+  l2_factor: 0.000000001
   optimizer:
-    learning_rate: 0.001
+    learning_rate: 0.0005
   loss:
     main_output: "binary_crossentropy"
     aux_output: "binary_crossentropy"

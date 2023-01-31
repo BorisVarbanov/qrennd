@@ -63,31 +63,32 @@ def generate_dataset(folder, num_shots, nums_rounds, data_input):
 
 # %%
 # Parameters
-EXP_NAME = "20230117-d3_rot-surf_circ-level_test-train"
+EXP_NAME = "20230131-d3_rot-surf_circ-level_large-dataset"
 
 LAYOUT_FILE = "d3_rotated_layout.yaml"
 CONFIG_FILE = "base_config.yaml"
 
 DATA_INPUT = "defects"
 
-NUM_TRAIN_SHOTS = 10000
+NUM_TRAIN_SHOTS = 100000
 NUM_TRAIN_ROUNDS = 20
 TRAIN_ROUNDS = list(range(1, NUM_TRAIN_ROUNDS + 1, 2))
 
-NUM_VAL_SHOTS = 1000
+NUM_VAL_SHOTS = 10000
 NUM_VAL_ROUNDS = 20
 VAL_ROUNDS = list(range(1, NUM_VAL_ROUNDS + 1, 2))
 
 BATCH_SIZE = 64
-NUM_EPOCHS = 1000
-PATIENCE = 20
+NUM_EPOCHS = 500
+PATIENCE = 50
 MIN_DELTA = 0
+SAVE_BEST_ONLY = True
 
 # %%
 # Define used directories
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
 
-USERNAME = "bmvarbanov"
+USERNAME = "mserraperalta"
 SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
 #SCRATH_DIR = NOTEBOOK_DIR
 
@@ -149,11 +150,12 @@ model = get_model(
 
 
 # %%
+checkpoint_str = "weights.hdf5" if SAVE_BEST_ONLY else "weights-{epoch:02d}-{val_loss:.5f}.hdf5"
 model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    filepath=CHECKPOINT_DIR / "weights-{epoch:02d}-{val_loss:.5f}.hdf5",
+    filepath=CHECKPOINT_DIR / checkpoint_str,
     monitor="val_loss",
     mode="min",
-    save_best_only=False
+    save_best_only=SAVE_BEST_ONLY
 )
 tensorboard = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR)
 early_stop = tf.keras.callbacks.EarlyStopping(
@@ -188,4 +190,4 @@ history = model.fit(
 )
 
 # %%
-model.save(CHECKPOINT_DIR / "weights.hdf5")
+model.save(CHECKPOINT_DIR / "final_weights.hdf5")
