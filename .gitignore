@@ -168,3 +168,8 @@ events.out.tfevents*
 *.memory_profile.json.gz
 *.kernel_stats.pb
 *.input_pipeline.pb
+
+# Outputs from cluster
+*.err
+*.out
+
