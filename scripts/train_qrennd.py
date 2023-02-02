@@ -31,6 +31,7 @@ NUM_EPOCHS = 500
 PATIENCE = 50
 MIN_DELTA = 0
 SAVE_BEST_ONLY = True
+TRAINING_NAME = "base-training_500-epochs"
 
 # %%
 # Define used directories
@@ -57,12 +58,14 @@ if not EXP_DIR.exists():
 cur_datetime = datetime.now()
 datetime_str = cur_datetime.strftime("%Y%m%d-%H%M%S")
 
-OUTPUT_DIR = SCRATH_DIR / "output" / EXP_NAME
+TRAINING_NAME = TRAINING_NAME if TRAINING_NAME == "" else f"-{TRAINING_NAME}"
+OUTPUT_DIR = SCRATH_DIR / "output" / EXP_NAME / f"{datetime_str}{TRAINING_NAME}"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-LOG_DIR = OUTPUT_DIR / f"logs/{datetime_str}"
+LOG_DIR = OUTPUT_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-CHECKPOINT_DIR = OUTPUT_DIR / "tmp/checkpoint"
+CHECKPOINT_DIR = OUTPUT_DIR / "checkpoint"
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 
 
