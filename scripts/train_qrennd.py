@@ -33,6 +33,10 @@ MIN_DELTA = 0
 SAVE_BEST_ONLY = True
 TRAINING_NAME = "base-training_500-epochs"
 
+LOAD_PREVIOUS_MODEL = False
+PREVIOUS_MODEL_FOLDER = ""
+WEIGHT_NAME = "final_weights.hdf5"
+
 # %%
 # Define used directories
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -68,6 +72,10 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 CHECKPOINT_DIR = OUTPUT_DIR / "checkpoint"
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 
+if LOAD_PREVIOUS_MODEL:
+    PREVIOUS_MODEL = SCRATH_DIR / "output" / EXP_NAME / PREVIOUS_MODEL_FOLDER / "checkpoint" / WEIGHT_NAME
+    if not PREVIOUS_MODEL.exists():
+        raise ValueError("Previous model file does not exist.")
 
 # %%
 # Load setup objects
@@ -126,6 +134,29 @@ callbacks = [
     csv_logs,
 ]
 
+if LOAD_PREVIOUS_MODEL:
+    model.load_weights(PREVIOUS_MODEL)
+
+# %%
+# store information of the setup of the model
+with open(LOG_DIR / "setup.txt", "w") as file:
+    f.write(f"""SETUP OF THE TRAINING
+EXP_NAME = {EXP_NAME}
+LAYOUT_FILE = {LAYOUT_FILE}
+CONFIG_FILE = {CONFIG_FILE}
+DATA_INPUT = {DATA_INPUT}
+NUM_TRAIN_ROUNDS = {NUM_TRAIN_ROUNDS}
+NUM_TRAIN_SHOTS = {NUM_TRAIN_SHOTS}
+NUM_VAL_SHOTS = {NUM_VAL_SHOTS}
+NUM_VAL_ROUNDS = {NUM_VAL_ROUNDS}
+BATCH_SIZE = {BATCH_SIZE}
+NUM_EPOCHS = {NUM_EPOCHS}
+PATIENCE = {PATIENCE}
+MIN_DELTA = {MIN_DELTA}
+CONFIG = {str(config)}
+LOAD_PREVIOUS_MODEL = {LOAD_PREVIOUS_MODEL}
+PREVIOUS_MODEL = {PREVIOUS_MODEL}
+""")
 
 # %%
 history = model.fit(
