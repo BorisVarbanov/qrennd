@@ -31,10 +31,10 @@ NUM_EPOCHS = 500
 PATIENCE = 50
 MIN_DELTA = 0
 SAVE_BEST_ONLY = True
-TRAINING_NAME = "base-training_500-epochs"
+TRAINING_NAME = "tunning_low-lr"
 
-LOAD_PREVIOUS_MODEL = False
-PREVIOUS_MODEL_FOLDER = ""
+LOAD_PREVIOUS_MODEL = True
+PREVIOUS_MODEL_FOLDER = "20230202-175203-base-training_500-epochs"
 WEIGHT_NAME = "final_weights.hdf5"
 
 # %%
@@ -72,6 +72,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 CHECKPOINT_DIR = OUTPUT_DIR / "checkpoint"
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 
+PREVIOUS_MODEL = ""
 if LOAD_PREVIOUS_MODEL:
     PREVIOUS_MODEL = SCRATH_DIR / "output" / EXP_NAME / PREVIOUS_MODEL_FOLDER / "checkpoint" / WEIGHT_NAME
     if not PREVIOUS_MODEL.exists():
@@ -139,7 +140,7 @@ if LOAD_PREVIOUS_MODEL:
 
 # %%
 # store information of the setup of the model
-with open(LOG_DIR / "setup.txt", "w") as file:
+with open(LOG_DIR / "setup.txt", "w") as f:
     f.write(f"""SETUP OF THE TRAINING
 EXP_NAME = {EXP_NAME}
 LAYOUT_FILE = {LAYOUT_FILE}
