@@ -16,7 +16,9 @@ LAYOUT_FILE = "d3_rotated_layout.yaml"
 CONFIG_FILE = "base_config.yaml"
 
 DATA_INPUT = "defects"
+DATA_FINAL_INPUT = "defects"
 LOG_STATES = [0, 1]
+ROT_BASIS = False
 
 NUM_TRAIN_SHOTS = 100000
 NUM_TRAIN_ROUNDS = 20
@@ -74,7 +76,14 @@ CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 
 PREVIOUS_MODEL = ""
 if LOAD_PREVIOUS_MODEL:
-    PREVIOUS_MODEL = SCRATH_DIR / "output" / EXP_NAME / PREVIOUS_MODEL_FOLDER / "checkpoint" / WEIGHT_NAME
+    PREVIOUS_MODEL = (
+        SCRATH_DIR
+        / "output"
+        / EXP_NAME
+        / PREVIOUS_MODEL_FOLDER
+        / "checkpoint"
+        / WEIGHT_NAME
+    )
     if not PREVIOUS_MODEL.exists():
         raise ValueError("Previous model file does not exist.")
 
@@ -82,6 +91,7 @@ if LOAD_PREVIOUS_MODEL:
 # Load setup objects
 layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
 config = Config.from_yaml(CONFIG_DIR / CONFIG_FILE)
+proj_matrix = layout.projection_matrix(stab_type="x_type" if ROT_BASIS else "z_type")
 
 # %%
 train_generator = DataGenerator(
@@ -90,6 +100,9 @@ train_generator = DataGenerator(
     states=LOG_STATES,
     qec_rounds=TRAIN_ROUNDS,
     batch_size=BATCH_SIZE,
+    data_input=DATA_INPUT,
+    data_final_input=DATA_FINAL_INPUT,
+    proj_matrix=proj_matrix,
 )
 
 val_generator = DataGenerator(
@@ -98,6 +111,9 @@ val_generator = DataGenerator(
     states=LOG_STATES,
     qec_rounds=VAL_ROUNDS,
     batch_size=BATCH_SIZE,
+    data_input=DATA_INPUT,
+    data_final_input=DATA_FINAL_INPUT,
+    proj_matrix=proj_matrix,
 )
 
 # %%
@@ -141,11 +157,14 @@ if LOAD_PREVIOUS_MODEL:
 # %%
 # store information of the setup of the model
 with open(LOG_DIR / "setup.txt", "w") as f:
-    f.write(f"""SETUP OF THE TRAINING
+    f.write(
+        f"""SETUP OF THE TRAINING
 EXP_NAME = {EXP_NAME}
 LAYOUT_FILE = {LAYOUT_FILE}
 CONFIG_FILE = {CONFIG_FILE}
 DATA_INPUT = {DATA_INPUT}
+DATA_FINAL_INPUT = {DATA_FINAL_INPUT}
+ROT_BASIS = {ROT_BASIS}
 NUM_TRAIN_ROUNDS = {NUM_TRAIN_ROUNDS}
 NUM_TRAIN_SHOTS = {NUM_TRAIN_SHOTS}
 NUM_VAL_SHOTS = {NUM_VAL_SHOTS}
@@ -157,7 +176,8 @@ MIN_DELTA = {MIN_DELTA}
 CONFIG = {str(config)}
 LOAD_PREVIOUS_MODEL = {LOAD_PREVIOUS_MODEL}
 PREVIOUS_MODEL = {PREVIOUS_MODEL}
-""")
+"""
+    )
 
 # %%
 history = model.fit(

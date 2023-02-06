@@ -2,12 +2,16 @@
 # Module import
 from math import floor
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import xarray as xr
 from tensorflow.keras.utils import Sequence
 
-from qrennd.utils.data_processing import get_defects, get_syndromes
+from qrennd.utils.data_processing import (
+    get_defects,
+    get_syndromes,
+    get_final_defects,
+)
 
 
 class DataGenerator(Sequence):
@@ -18,6 +22,9 @@ class DataGenerator(Sequence):
         states: List[int],
         qec_rounds: List[int],
         batch_size: int,
+        data_input: str,
+        data_final_input: str,
+        proj_matrix: Optional[xr.DataArray],
     ):
         num_states = len(states)
         num_rounds = len(qec_rounds)
@@ -27,10 +34,22 @@ class DataGenerator(Sequence):
 
         self.batch_size = batch_size
 
+        self.data_input = data_input
+        self.data_final_input = data_final_input
+        self.proj_matrix = proj_matrix
+
         self._inputs = []
         self._aux_inputs = []
         self._outputs = []
-        self.load_datasets(folder, states, num_shots, qec_rounds)
+        self.load_datasets(
+            folder,
+            states,
+            num_shots,
+            qec_rounds,
+            data_input,
+            data_final_input,
+            proj_matrix,
+        )
 
     def load_datasets(
         self,
@@ -38,6 +57,9 @@ class DataGenerator(Sequence):
         states: List[int],
         num_shots: int,
         qec_rounds: List[int],
+        data_input: str,
+        data_final_input: str,
+        proj_matrix: Optional[xr.DataArray],
     ) -> xr.Dataset:
         for num_rounds in qec_rounds:
             _datasets = []
@@ -54,10 +76,27 @@ class DataGenerator(Sequence):
             anc_meas = dataset.anc_meas.transpose("run", "qec_round", "anc_qubit")
             syndromes = get_syndromes(anc_meas, meas_reset)
             defects = get_defects(syndromes)
-            self._inputs.append(defects.values)
+            if input_type == "measurements":
+                self._inputs.append(anc_meas.values)
+            elif input_type == "syndromes":
+                self._inputs.append(syndromes.values)
+            elif input_type == "defects":
+                self._inputs.append(defects.values)
+            else:
+                raise TypeError(
+                    "'input_type' must be 'defects', 'syndrmes', or 'measurements'"
+                )
 
             data_meas = dataset.data_meas.transpose("run", "data_qubit")
-            self._aux_inputs.append(data_meas.values)
+            final_defects = get_final_defects(syndromes, proj_matrix)
+            if final_input_type == "measurements":
+                self._aux_inputs.append(data_meas.values)
+            elif final_input_type == "defects":
+                self._aux_inputs.append(final_defects.values)
+            else:
+                raise TypeError(
+                    "'final_input_type' must be 'defects' or 'measurements'"
+                )
 
             log_meas = data_meas.sum(dim="data_qubit") % 2
             log_errors = log_meas ^ dataset.log_state
