@@ -1,8 +1,8 @@
 """The 2-layer LSTM RNN model use for the decoder."""
+from itertools import count
 from typing import Callable, Dict, Optional, Tuple, Union
 
-from tensorflow import keras
-from tensorflow import concat
+from tensorflow import concat, keras
 
 from ..utils.config import Config
 
@@ -73,33 +73,36 @@ def get_model(
         name="final_defects",
     )
 
-    lstm_layer = keras.layers.LSTM(
-        config.model.get("LSTM_units", 64),
-        return_sequences=True,
-        name="LSTM_1",
-    )
-    output = lstm_layer(defects)
+    lstm_units = config.model["LSTM_units"]
+    dropout_rates = config.model["LSTM_dropout_rates"]
 
-    if rate is not None:
-        dropout_layer = keras.layers.Dropout(
-            rate=rate,
-            name="dropout_LSTM_1",
+    num_layers = len(lstm_units)
+    print(num_layers)
+    if len(dropout_rates) != num_layers:
+        raise ValueError(
+            f"Mismatch between the number of LSTM layers ({num_layers})"
+            "and the number of LSTM dropout rate after each layer."
         )
-        output = dropout_layer(output)
 
-    lstm_layer = keras.layers.LSTM(
-        config.model.get("LSTM_units", 64),
-        return_sequences=False,
-        name="LSTM_2",
-    )
-    output = lstm_layer(output)
-
-    if rate is not None:
-        dropout_layer = keras.layers.Dropout(
-            rate=rate,
-            name="dropout_LSTM_2",
+    layer_inds = range(1, num_layers + 1)
+    output = None
+    for ind, units, rate in zip(layer_inds, lstm_units, dropout_rates):
+        return_sequences = ind != num_layers
+        layer_label = f"LSTM_{ind}"
+        layer_input = defects if ind == 1 else output
+        lstm_layer = keras.layers.LSTM(
+            units=units,
+            return_sequences=return_sequences,
+            name=layer_label,
         )
-        output = dropout_layer(output)
+        output = lstm_layer(layer_input)
+
+        if rate is not None:
+            dropout_layer = keras.layers.Dropout(
+                rate=rate,
+                name=f"dropout_{layer_label}",
+            )
+            output = dropout_layer(output)
 
     act_layer = keras.layers.Activation(
         activation="relu",
@@ -109,9 +112,15 @@ def get_model(
 
     concat_input = concat((output, final_defects), axis=1)
 
-    regulizar = keras.regularizers.L2(l2=config.train["l2_factor"])
+    l2_factor = config.model["l2_factor"]
+    regulizar = keras.regularizers.L2(l2_factor)
+
+    eval_units = config.model["eval_units"]
+    rate = config.model["eval_dropout_rate"]
+    output_units = config.model["output_units"]
+
     dense_layer = keras.layers.Dense(
-        config.model["eval_units"],
+        units=eval_units,
         activation="relu",
         kernel_regularizer=regulizar,
         name="main_dense",
@@ -126,15 +135,15 @@ def get_model(
         main_output = dropout_layer(main_output)
 
     output_layer = keras.layers.Dense(
-        config.model["output_units"],
+        units=output_units,
         activation="sigmoid",
         name="main_output",
     )
     main_output = output_layer(main_output)
 
-    regulizar = keras.regularizers.L2(l2=config.train["l2_factor"])
+    regulizar = keras.regularizers.L2(l2_factor)
     dense_layer = keras.layers.Dense(
-        config.model["eval_units"],
+        units=eval_units,
         activation="relu",
         kernel_regularizer=regulizar,
         name="aux_dense",
@@ -149,7 +158,7 @@ def get_model(
         aux_output = dropout_layer(aux_output)
 
     dense_layer = keras.layers.Dense(
-        config.model["output_units"],
+        units=output_units,
         activation="sigmoid",
         name="aux_output",
     )

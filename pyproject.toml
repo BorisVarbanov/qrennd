@@ -21,6 +21,7 @@ matplotlib = "^3.6.3"
 jupyter = {version = "^1.0.0", optional = true}
 ipykernel = {version = "^6.20.2", optional = true}
 tensorflow = {version = "2.4.1", optional = true}
+scipy = "1.9.2"
 
 [tool.poetry.extras]
 notebook = ["jupyter", "ipykernel"]

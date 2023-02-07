@@ -35,7 +35,7 @@ MIN_DELTA = 0
 SAVE_BEST_ONLY = True
 TRAINING_NAME = "tunning_low-lr"
 
-LOAD_PREVIOUS_MODEL = True
+LOAD_PREVIOUS_MODEL = False
 PREVIOUS_MODEL_FOLDER = "20230202-175203-base-training_500-epochs"
 WEIGHT_NAME = "final_weights.hdf5"
 
@@ -118,11 +118,11 @@ val_generator = DataGenerator(
 
 # %%
 num_anc = len(layout.get_qubits(role="anc"))
-num_data = len(layout.get_qubits(role="data"))
+num_final_anc = int(0.5 * num_anc)
 
 model = get_model(
     defects_shape=(None, num_anc),
-    final_defects_shape=(num_data,),
+    final_defects_shape=(num_final_anc,),
     config=config,
 )
 
