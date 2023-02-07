@@ -75,27 +75,29 @@ class DataGenerator(Sequence):
 
             anc_meas = dataset.anc_meas.transpose("run", "qec_round", "anc_qubit")
             syndromes = get_syndromes(anc_meas, meas_reset)
-            defects = get_defects(syndromes)
-            if input_type == "measurements":
+
+            if data_input == "measurements":
                 self._inputs.append(anc_meas.values)
-            elif input_type == "syndromes":
+            elif data_input == "syndromes":
                 self._inputs.append(syndromes.values)
-            elif input_type == "defects":
+            elif data_input == "defects":
+                defects = get_defects(syndromes)
                 self._inputs.append(defects.values)
             else:
                 raise TypeError(
-                    "'input_type' must be 'defects', 'syndrmes', or 'measurements'"
+                    "'data_input' must be 'defects', 'syndrmes', or 'measurements'"
                 )
 
             data_meas = dataset.data_meas.transpose("run", "data_qubit")
-            final_defects = get_final_defects(syndromes, proj_matrix)
-            if final_input_type == "measurements":
+            if data_final_input == "measurements":
                 self._aux_inputs.append(data_meas.values)
-            elif final_input_type == "defects":
+            elif data_final_input == "defects":
+                final_syndromes = (data_meas @ proj_matrix) % 2
+                final_defects = get_final_defects(syndromes, final_syndromes)
                 self._aux_inputs.append(final_defects.values)
             else:
                 raise TypeError(
-                    "'final_input_type' must be 'defects' or 'measurements'"
+                    "'data_final_input' must be 'defects' or 'measurements'"
                 )
 
             log_meas = data_meas.sum(dim="data_qubit") % 2
