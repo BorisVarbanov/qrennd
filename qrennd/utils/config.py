@@ -1,23 +1,32 @@
 """Parameter configuration (Config) class."""
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Type, TypeVar
+from dataclasses import dataclass, field, asdict
+from typing import Type, TypeVar, Dict
 
 import yaml
 
 T = TypeVar("T", bound="Config")
 
 
+def range_constructor(loader, node):
+    args = loader.construct_sequence(node)
+    return range(*args)
+
+
+yaml.add_constructor("!range", range_constructor)
+
+
 @dataclass
 class Config:
     """Config class containing data, train and model hyperparameters and checkpoint/summary directories."""
 
-    exp_name: str
-    data: dict
+    metadata: Dict[str, str]
+
+    dataset: dict
     train: dict
     model: dict
-    summary_dir: Path = field(repr=False, init=False)
-    checkpoint_dir: Path = field(repr=False, init=False)
+
+    data_dir: str = field(repr=False, default=None)
+    output_dir: str = field(repr=False, default=None)
 
     @classmethod
     def from_yaml(cls: Type[T], filename: str) -> T:
@@ -35,11 +44,22 @@ class Config:
             The initialised qrennd.utils.Config object based on the yaml.
         """
         with open(filename, "r") as file:
-            setup = yaml.safe_load(file)
+            setup = yaml.full_load(file)
 
-        exp_name = setup.get("exp_name")
-        data = setup.get("data")
-        train = setup.get("train")
-        model = setup.get("model")
+        arg_names = ("metadata", "dataset", "train", "model")
+        args = {}
 
-        return cls(exp_name, data, train, model)
+        for name in arg_names:
+            try:
+                val = setup[name]
+                args[name] = val
+            except KeyError:
+                raise ValueError("Invalid configuration file format.")
+
+        return cls(**args)
+
+    def to_yaml(self, filepath: str) -> None:
+        data = asdict(self)
+
+        with open(filepath, mode="wb") as file:
+            yaml.dump(data, file, encoding="utf-8")
