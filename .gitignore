@@ -169,7 +169,7 @@ events.out.tfevents*
 *.kernel_stats.pb
 *.input_pipeline.pb
 
-# Outputs from cluster
+# Outputs from cluster or saved parametrs
 *.err
 *.out
-
+*.txt
