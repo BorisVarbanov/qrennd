@@ -1,6 +1,4 @@
 """Utils module init."""
-from ..config.config import Config
-from .data_processing import get_defects, get_syndromes
-from .dataset_generator import DataGenerator
+from .data_processing import get_defects, get_final_defects, get_syndromes
 
-__all__ = ["Config", "DataGenerator", "get_syndromes", "get_defects"]
+__all__ = ["get_syndromes", "get_defects", "get_final_defects"]
