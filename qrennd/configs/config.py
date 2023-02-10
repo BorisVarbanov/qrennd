@@ -1,5 +1,6 @@
 """Parameter configuration (Config) class."""
-from dataclasses import dataclass, field, asdict
+from os import error
+from dataclasses import dataclass, field
 from typing import Type, TypeVar, Dict
 
 import yaml
@@ -9,7 +10,7 @@ T = TypeVar("T", bound="Config")
 
 def range_constructor(loader, node):
     args = loader.construct_sequence(node)
-    return range(*args)
+    return list(range(*args))
 
 
 yaml.add_constructor("!range", range_constructor)
@@ -25,8 +26,8 @@ class Config:
     train: dict
     model: dict
 
-    data_dir: str = field(repr=False, default=None)
-    output_dir: str = field(repr=False, default=None)
+    data_dir: str = field(default=None)
+    output_dir: str = field(default=None)
 
     @classmethod
     def from_yaml(cls: Type[T], filename: str) -> T:
@@ -43,23 +44,26 @@ class Config:
         T
             The initialised qrennd.utils.Config object based on the yaml.
         """
-        with open(filename, "r") as file:
-            setup = yaml.full_load(file)
+        try:
+            with open(filename, "r") as file:
+                setup = yaml.full_load(file)
+        except error:
+            raise ValueError(f"Invalid Config setup file provided:  {filename}")
 
-        arg_names = ("metadata", "dataset", "train", "model")
+        attributes = ("metadata", "dataset", "train", "model")
         args = {}
 
-        for name in arg_names:
+        for attr in attributes:
             try:
-                val = setup[name]
-                args[name] = val
+                args[attr] = setup[attr]
             except KeyError:
                 raise ValueError("Invalid configuration file format.")
 
         return cls(**args)
 
     def to_yaml(self, filepath: str) -> None:
-        data = asdict(self)
+        attributes = ("metadata", "dataset", "train", "model")
+        data = {attr: getattr(self, attr) for attr in attributes}
 
-        with open(filepath, mode="wb") as file:
-            yaml.dump(data, file, encoding="utf-8")
+        with open(filepath, mode="wt", encoding="utf-8") as file:
+            yaml.dump(data, file)
