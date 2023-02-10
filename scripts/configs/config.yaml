@@ -5,18 +5,18 @@ metadata:
 
 dataset:
   train:
-    shots: 200000
+    shots: 10000
     rounds: !range [1, 20, 2]
     states: [0, 1]
 
   dev:
-    shots: 20000
+    shots: 1000
     rounds: !range [1, 20, 2]
     states: [0, 1]
 
-  rotate_basis: false
-  sequential_input: "defects"
-  non-sequential_input: "defects"
+  rot_basis: false
+  lstm_input: "defects"
+  eval_input: "defects"
 
 train:
   optimizer:
@@ -39,11 +39,11 @@ train:
     csv_log:
       append: false
     checkpoint:
-      monitor: val_loss,
+      monitor: val_loss
       mode: min
-      save_best: true
+      save_best_only: true
 
-  num_epochs: 500
+  epochs: 2
   batch_size: 64
 
 model:
