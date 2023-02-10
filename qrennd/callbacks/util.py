@@ -1,33 +1,40 @@
+from typing import Any, Dict, Tuple
+
+from tensorflow.keras.callbacks import (
+    Callback,
+    CSVLogger,
+    EarlyStopping,
+    ModelCheckpoint,
+)
+
 from qrennd.configs import Config
 
-from tensorflow import keras
+
+def get_checkpoint_filename(params: Dict[str, Any]) -> str:
+    if params["save_best_only"]:
+        filename = "weights.hdf5"
+        return filename
+
+    filename = f"weights-{{epoch}}-{{{params['monitor']}}}.hdf5"
+    return filename
 
 
-def get_callbacks(config: Config):
-    callbacks = []
+def get_callbacks(config: Config) -> Tuple[Callback]:
     params = config.train.get("callbacks")
 
-    checkpoint_params = params["checkpoint"]
-
-    if checkpoint_params["save_best_only"]:
-        checkpoint = "weights.hdf5"
-    else:
-        checkpoint = "weights-{epoch:02d}-{val_loss:.5f}.hdf5"
-
-    output_dir = config.output_dir
-
-    model_checkpoint = keras.callbacks.ModelCheckpoint(
-        filepath=config.output_dir / checkpoint_str,
-        params,
-    )
-    early_stop = keras.callbacks.EarlyStopping(
-        **params["early_stop"]
+    checkpoint_filename = get_checkpoint_filename(params["checkpoint"])
+    model_checkpoint = ModelCheckpoint(
+        filepath=config.checkpoint_dir / checkpoint_filename,
+        **params["checkpoint"],
     )
 
-    logs_filename = config.log_dir / "training.log"
-    csv_logs = keras.callbacks.CSVLogger(
-        filename=logs_filename,
-        append=False,
+    early_stop = EarlyStopping(
+        **params["early_stop"],
     )
 
-    return callbacks
+    csv_logs = CSVLogger(
+        filename=config.log_dir / "training.log",
+        **params["csv_log"],
+    )
+
+    return model_checkpoint, early_stop, csv_logs
