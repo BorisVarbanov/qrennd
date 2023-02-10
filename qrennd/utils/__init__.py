@@ -1,5 +1,5 @@
 """Utils module init."""
-from .config import Config
+from ..config.config import Config
 from .data_processing import get_defects, get_syndromes
 from .dataset_generator import DataGenerator
 
