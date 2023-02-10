@@ -4,7 +4,7 @@ from typing import Callable, Dict, Optional, Tuple, Union
 
 from tensorflow import concat, keras
 
-from ..utils.config import Config
+from ..config.config import Config
 
 
 def get_model(
@@ -59,9 +59,7 @@ def get_model(
     tensorflow.keras.Model
         The build and compiled model.
     """
-    rate = config.train.get("dropout_rate")
-
-    defects = keras.layers.Input(
+    seq_input = keras.layers.Input(
         shape=defects_shape,
         dtype="float32",
         name="defects",
@@ -83,24 +81,26 @@ def get_model(
             f"Mismatch between the number of LSTM layers ({num_layers})"
             "and the number of LSTM dropout rate after each layer."
         )
+    inds = range(1, num_layers + 1)
 
-    layer_inds = range(1, num_layers + 1)
     output = None
-    for ind, units, rate in zip(layer_inds, lstm_units, dropout_rates):
-        return_sequences = ind != num_layers
-        layer_label = f"LSTM_{ind}"
-        layer_input = defects if ind == 1 else output
-        lstm_layer = keras.layers.LSTM(
+    for ind, units, rate in zip(inds, lstm_units, dropout_rates):
+        return_sequences = ind != num_layers - 1
+
+        lstm = keras.layers.LSTM(
             units=units,
             return_sequences=return_sequences,
-            name=layer_label,
+            name=f"LSTM_{ind}",
         )
-        output = lstm_layer(layer_input)
+        if output is None:
+            output = lstm(seq_input)
+        else:
+            output = lstm(output)
 
         if rate is not None:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
-                name=f"dropout_{layer_label}",
+                name=f"dropout_LSTM_{ind}",
             )
             output = dropout_layer(output)
 
