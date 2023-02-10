@@ -12,19 +12,34 @@ from qrennd.utils.data_processing import (
     get_syndromes,
     get_final_defects,
 )
+from qrennd import Config
+
+def get_seq_input():
+    dataset = xr.concat(_datasets, dim="log_state")
+    dataset = dataset.stack(run=["log_state", "shot"])
+
+    anc_meas = dataset.anc_meas.transpose("run", "qec_round", "anc_qubit")
+    syndromes = get_syndromes(anc_meas, dataset.meas_reset)
+
+    if data_input == "measurements":
+        self._inputs.append(anc_meas.values)
+    elif data_input == "syndromes":
+        self._inputs.append(syndromes.values)
+    elif data_input == "defects":
+        defects = get_defects(syndromes)
+        self._inputs.append(defects.values)
+    else:
+        raise TypeError(
+            "'data_input' must be 'defects', 'syndrmes', or 'measurements'"
+        )
+
 
 
 class DataGenerator(Sequence):
     def __init__(
         self,
-        folder: Path,
-        num_shots: int,
-        states: List[int],
-        qec_rounds: List[int],
-        batch_size: int,
-        data_input: str,
-        data_final_input: str,
-        proj_matrix: Optional[xr.DataArray],
+        seq_inputs,
+        outputs,
     ):
         num_states = len(states)
         num_rounds = len(qec_rounds)
@@ -36,57 +51,31 @@ class DataGenerator(Sequence):
 
         self.data_input = data_input
         self.data_final_input = data_final_input
-        self.proj_matrix = proj_matrix
 
-        self._inputs = []
-        self._aux_inputs = []
-        self._outputs = []
-        self.load_datasets(
-            folder,
-            states,
-            num_shots,
-            qec_rounds,
-            data_input,
-            data_final_input,
-            proj_matrix,
-        )
+        self.seq_inputs = []
+        self.aux_input = []
 
+        self.output = []
+
+    @classmethod
     def load_datasets(
-        self,
-        folder: str,
-        states: List[int],
-        num_shots: int,
-        qec_rounds: List[int],
-        data_input: str,
-        data_final_input: str,
+        cls,
+        path: str,
+        config: Config,
         proj_matrix: Optional[xr.DataArray],
     ) -> xr.Dataset:
-        for num_rounds in qec_rounds:
+
+        rounds = config.dataset["rounds"]
+        states = config.dataset["states"]
+        shots = config.dataset["shots"]
+
+        for num_rounds in rounds:
             _datasets = []
             for state in states:
-                experiment = f"surf-code_d3_bZ_s{state}_n{num_shots}_r{num_rounds}"
-                dataset = xr.open_dataset(folder / experiment / "measurements.nc")
+                experiment = f"surf-code_d3_bZ_s{state}_n{shots}_r{num_rounds}"
+                dataset = xr.open_dataset(path / experiment / "measurements.nc")
                 _datasets.append(dataset)
 
-            dataset = xr.concat(_datasets, dim="log_state")
-            dataset = dataset.stack(run=["log_state", "shot"])
-
-            meas_reset = dataset.meas_reset
-
-            anc_meas = dataset.anc_meas.transpose("run", "qec_round", "anc_qubit")
-            syndromes = get_syndromes(anc_meas, meas_reset)
-
-            if data_input == "measurements":
-                self._inputs.append(anc_meas.values)
-            elif data_input == "syndromes":
-                self._inputs.append(syndromes.values)
-            elif data_input == "defects":
-                defects = get_defects(syndromes)
-                self._inputs.append(defects.values)
-            else:
-                raise TypeError(
-                    "'data_input' must be 'defects', 'syndrmes', or 'measurements'"
-                )
 
             data_meas = dataset.data_meas.transpose("run", "data_qubit")
             if data_final_input == "measurements":
@@ -132,8 +121,8 @@ class DataGenerator(Sequence):
         end_ind = start_ind + self.batch_size
 
         inputs = dict(
-            defects=self._inputs[group_ind][start_ind:end_ind],
-            final_defects=self._aux_inputs[group_ind][start_ind:end_ind],
+            seq_inputs=self.seq_inputs[group_ind][start_ind:end_ind],
+            aux_input=self.aux_input[group_ind][start_ind:end_ind],
         )
-        outputs = self._outputs[group_ind][start_ind:end_ind]
-        return inputs, outputs
+        output = self.output[group_ind][start_ind:end_ind]
+        return inputs, output
