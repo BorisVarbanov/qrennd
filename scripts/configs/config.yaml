@@ -6,7 +6,7 @@ metadata:
 dataset:
   train:
     shots: 200000
-    rounds: !range [1, 20, 3]
+    rounds: !range [1, 20, 2]
     states: [0, 1]
 
   dev:
