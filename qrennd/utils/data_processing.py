@@ -3,13 +3,12 @@ from typing import Optional
 from xarray import DataArray
 
 
-def get_syndromes(anc_meas: DataArray, meas_reset: bool) -> DataArray:
+def get_syndromes(anc_meas: DataArray, meas_reset: bool = False) -> DataArray:
     if meas_reset:
-        syndromes = anc_meas
-        syndromes.name = "syndromes"
-    else:
-        syndromes = anc_meas ^ anc_meas.shift(qec_round=1, fill_value=0)
-        syndromes.name = "syndromes"
+        return anc_meas
+
+    shifted_meas = anc_meas.shift(qec_round=1, fill_value=0)
+    syndromes = anc_meas ^ shifted_meas
     return syndromes
 
 
@@ -23,12 +22,10 @@ def get_defects(syndromes: DataArray, frame: Optional[DataArray] = None) -> Data
     return defects
 
 
-def get_final_defects(
-    syndromes: DataArray,
-    proj_syndrome: DataArray,
-) -> DataArray:
-    last_syndrome = syndromes.isel(qec_round=-1)
-    proj_anc = proj_syndrome.anc_qubit
+def get_final_defects(syndromes: DataArray, proj_syndrome: DataArray) -> DataArray:
+    last_round = syndromes.qec_round.values[-1]
+    anc_qubits = proj_syndrome.anc_qubit.values
 
-    final_defects = last_syndrome.sel(anc_qubit=proj_anc) ^ proj_syndrome
-    return final_defects
+    last_syndromes = syndromes.sel(anc_qubit=anc_qubits, qec_round=last_round)
+    defects = last_syndromes ^ proj_syndrome
+    return defects
