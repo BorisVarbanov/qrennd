@@ -4,6 +4,7 @@ from math import floor
 from pathlib import Path
 from typing import List, Optional
 
+import numpy as np
 import xarray as xr
 from tensorflow.keras.utils import Sequence
 
@@ -20,7 +21,9 @@ class DataGenerator(Sequence):
         batch_size: int,
         lstm_input: str,
         eval_input: str,
-        proj_matrix: Optional[xr.DataArray],
+        shuffle: bool = True,
+        seed: Optional[int] = None,
+        proj_matrix: Optional[xr.DataArray] = None,
     ) -> None:
         num_states = len(states)
         num_rounds = len(rounds)
@@ -28,6 +31,10 @@ class DataGenerator(Sequence):
         self.num_groups = num_rounds
         self.group_size = shots * num_states
         self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.rng = np.random.default_rng(seed) if shuffle else None
+
+        self._groups = np.arange(self.num_groups)
 
         self._lstm_inputs = []
         self._eval_inputs = []
@@ -89,6 +96,18 @@ class DataGenerator(Sequence):
             log_errors = log_meas ^ dataset.log_state
             self._outputs.append(log_errors.values)
 
+    def on_epoch_end(self):
+        if self.shuffle:
+            self.rng.shuffle(self._groups)
+
+            inds = np.arange(self.group_size)
+            for group in range(self.num_groups):
+                self.rng.shuffle(inds)
+
+                self._lstm_inputs[group] = self._lstm_inputs[group][inds]
+                self._eval_inputs[group] = self._eval_inputs[group][inds]
+                self._outputs[group] = self._outputs[group][inds]
+
     def __len__(self) -> int:
         """
         __len__ Returns the number of batches per epoch
@@ -111,14 +130,15 @@ class DataGenerator(Sequence):
             final defects, together with the output label.
         """
         group_ind = index % self.num_groups
-        batch_ind = index // self.num_groups
+        group = self._groups[group_ind]
 
-        start_ind = batch_ind * self.batch_size
-        end_ind = start_ind + self.batch_size
+        batch_ind = index // self.num_groups
+        start_shot = batch_ind * self.batch_size
+        end_shot = start_shot + self.batch_size
 
         inputs = dict(
-            lstm_input=self._lstm_inputs[group_ind][start_ind:end_ind],
-            eval_input=self._eval_inputs[group_ind][start_ind:end_ind],
+            lstm_input=self._lstm_inputs[group][start_shot:end_shot],
+            eval_input=self._eval_inputs[group][start_shot:end_shot],
         )
-        outputs = self._outputs[group_ind][start_ind:end_ind]
+        outputs = self._outputs[group][start_shot:end_shot]
         return inputs, outputs
