@@ -1,6 +1,5 @@
 """Parameter configuration (Config) class."""
 from datetime import datetime
-from os import error
 from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar
 
@@ -90,8 +89,10 @@ class Config:
         try:
             with open(filepath, "r") as file:
                 setup = yaml.full_load(file)
-        except error:
-            raise ValueError(f"Invalid Config setup file provided:  {filepath}")
+        except FileNotFoundError as error:
+            raise ValueError(
+                f"Invalid Config setup file provided:  {filepath}"
+            ) from error
 
         try:
             metadata = setup["metadata"]
