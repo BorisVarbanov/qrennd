@@ -7,7 +7,7 @@ from typing import List, Optional
 import xarray as xr
 from tensorflow.keras.utils import Sequence
 
-from qrennd.utils.data_processing import get_defects, get_final_defects, get_syndromes
+from .preprocess import get_defects, get_final_defects, get_syndromes
 
 
 class DataGenerator(Sequence):
