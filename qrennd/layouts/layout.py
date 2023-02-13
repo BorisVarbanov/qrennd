@@ -276,12 +276,15 @@ class Layout:
         ValueError
             If the specified file is not a string.
         """
-        if not path.exists(filename):
-            raise ValueError("Given path doesn't exist")
+        try:
+            with open(filename, "r") as file:
+                layout_setup = yaml.safe_load(file)
+        except FileNotFoundError as error:
+            raise ValueError(
+                f"Invalid Layout setup file provided:  {filename}"
+            ) from error
 
-        with open(filename, "r") as file:
-            layout_setup = yaml.safe_load(file)
-            return cls(layout_setup)
+        return cls(layout_setup)
 
     def to_yaml(self, filename: Union[str, Path]) -> None:
         """

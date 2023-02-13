@@ -1,15 +1,15 @@
 """The 2-layer LSTM RNN model use for the decoder."""
-from itertools import count
-from typing import Callable, Dict, Optional, Tuple, Union
+from itertools import repeat
+from typing import Callable, Dict, Optional, Union
 
 from tensorflow import concat, keras
 
-from ..utils.config import Config
+from ..configs import Config
 
 
 def get_model(
-    defects_shape: Tuple[Union[int, None], int],
-    final_defects_shape: Tuple[int],
+    seq_size: int,
+    vec_size: int,
     config: Config,
     optimizer: Optional[str] = None,
     loss: Optional[Dict[str, Union[str, Callable]]] = None,
@@ -22,14 +22,10 @@ def get_model(
 
     Parameters
     ----------
-    syn_shape : Tuple[Union[int, None], ...]
-        The shape of the syndrome defects that the main head of the model takes as input.
-        The shape is expected to be a tuple of the order (number of QEC rounds, number of ancilla qubits).
-        In the case that the number of QEC rounds is a variable, None should be given instead.
-    final_syn_shape : Tuple[int]
-        The shape of either the final (projected) syndrome defects or the final data qubit measurement
-        that only the main head of the model takes as input.
-        The shape is expected to be the tuple (number of ancilla qubits, ).
+    seq_size : int
+        The size of each sequence that is given to the LSTM layers.
+    vec_size : Tuple[int]
+        The size of the vector given directly to the evaluation layer.
     config : Config
         The model configuartion, given as a Config dataclass. The configuation file
         should define the model property with following keys:
@@ -59,48 +55,49 @@ def get_model(
     tensorflow.keras.Model
         The build and compiled model.
     """
-    rate = config.train.get("dropout_rate")
-
-    defects = keras.layers.Input(
-        shape=defects_shape,
+    lstm_input = keras.layers.Input(
+        shape=(None, seq_size),
         dtype="float32",
-        name="defects",
+        name="lstm_input",
     )
 
-    final_defects = keras.layers.Input(
-        shape=final_defects_shape,
+    eval_input = keras.layers.Input(
+        shape=(vec_size,),
         dtype="float32",
-        name="final_defects",
+        name="eval_input",
     )
 
     lstm_units = config.model["LSTM_units"]
-    dropout_rates = config.model["LSTM_dropout_rates"]
+    dropout_rates = config.model.get("LSTM_dropout_rates")
 
     num_layers = len(lstm_units)
-    print(num_layers)
+    if dropout_rates is None:
+        dropout_rates = repeat(None, len(lstm_units))
+
     if len(dropout_rates) != num_layers:
         raise ValueError(
             f"Mismatch between the number of LSTM layers ({num_layers})"
             "and the number of LSTM dropout rate after each layer."
         )
+    inds = range(1, num_layers + 1)
 
-    layer_inds = range(1, num_layers + 1)
     output = None
-    for ind, units, rate in zip(layer_inds, lstm_units, dropout_rates):
+    for ind, units, rate in zip(inds, lstm_units, dropout_rates):
         return_sequences = ind != num_layers
-        layer_label = f"LSTM_{ind}"
-        layer_input = defects if ind == 1 else output
         lstm_layer = keras.layers.LSTM(
             units=units,
             return_sequences=return_sequences,
-            name=layer_label,
+            name=f"LSTM_{ind}",
         )
-        output = lstm_layer(layer_input)
+        if output is None:
+            output = lstm_layer(lstm_input)
+        else:
+            output = lstm_layer(output)
 
         if rate is not None:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
-                name=f"dropout_{layer_label}",
+                name=f"dropout_LSTM_{ind}",
             )
             output = dropout_layer(output)
 
@@ -110,19 +107,23 @@ def get_model(
     )
     output = act_layer(output)
 
-    concat_input = concat((output, final_defects), axis=1)
+    concat_input = concat((output, eval_input), axis=1)
 
-    l2_factor = config.model["l2_factor"]
-    regulizar = keras.regularizers.L2(l2_factor)
+    l2_factor = config.model.get("l2_factor")
+    if l2_factor is not None:
+        regularizer = keras.regularizers.L2(l2_factor)
+    else:
+        regularizer = None
 
-    eval_units = config.model["eval_units"]
-    rate = config.model["eval_dropout_rate"]
-    output_units = config.model["output_units"]
+    eval_units = config.model.get("eval_units", 64)
+
+    rate = config.model.get("eval_dropout_rate")
+    output_units = config.model.get("output_units", 1)
 
     dense_layer = keras.layers.Dense(
         units=eval_units,
         activation="relu",
-        kernel_regularizer=regulizar,
+        kernel_regularizer=regularizer,
         name="main_dense",
     )
     main_output = dense_layer(concat_input)
@@ -141,11 +142,15 @@ def get_model(
     )
     main_output = output_layer(main_output)
 
-    regulizar = keras.regularizers.L2(l2_factor)
+    if l2_factor is not None:
+        regularizer = keras.regularizers.L2(l2_factor)
+    else:
+        regularizer = None
+
     dense_layer = keras.layers.Dense(
         units=eval_units,
         activation="relu",
-        kernel_regularizer=regulizar,
+        kernel_regularizer=regularizer,
         name="aux_dense",
     )
     aux_output = dense_layer(output)
@@ -165,17 +170,17 @@ def get_model(
     aux_output = dense_layer(aux_output)
 
     model = keras.Model(
-        inputs=[defects, final_defects],
+        inputs=[lstm_input, eval_input],
         outputs=[main_output, aux_output],
         name=name or "decoder_model",
     )
 
     if optimizer is None:
-        opt_param = config.train.get("optimizer", "adam")
-        if isinstance(opt_param, dict):
-            optimizer = keras.optimizers.Adam(**opt_param)
+        opt_params = config.train.get("optimizer")
+        if opt_params is not None:
+            optimizer = keras.optimizers.Adam(**opt_params)
         else:
-            optimizer = opt_param
+            optimizer = keras.optimizers.Adam()
 
     if loss is None:
         loss = config.train.get("loss")
@@ -192,5 +197,15 @@ def get_model(
         loss_weights=loss_weights,
         metrics=metrics,
     )
+
+    init_weights = config.init_weights
+    if init_weights is not None:
+        try:
+            experiment_dir = config.output_dir / config.experiment
+            model.load_weights(experiment_dir / init_weights)
+        except FileNotFoundError as error:
+            raise ValueError(
+                "Invalid initial weights in configuration file."
+            ) from error
 
     return model
