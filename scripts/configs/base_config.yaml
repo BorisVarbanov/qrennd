@@ -1,4 +1,50 @@
-exp_name: base_model
+metadata:
+  experiment: 20230131-d3_rot-surf_circ-level_large-dataset
+  run: example-train
+  prev_run: null
+
+dataset:
+  train:
+    shots: 200000
+    rounds: !range [1, 20, 2]
+    states: [0, 1]
+
+  dev:
+    shots: 20000
+    rounds: !range [1, 20, 2]
+    states: [0, 1]
+
+  rot_basis: false
+  lstm_input: "defects"
+  eval_input: "defects"
+
+train:
+  optimizer:
+    learning_rate: 0.0001
+  loss:
+    main_output: binary_crossentropy
+    aux_output: binary_crossentropy
+  loss_weights:
+    main_output: 1.0
+    aux_output: 0.5
+  metrics:
+    main_output: accuracy
+    aux_output: accuracy
+  callbacks:
+    early_stop:
+      monitor: val_loss
+      mode: min
+      min_delta: 0
+      patience: 10
+    csv_log:
+      append: false
+    checkpoint:
+      monitor: val_loss
+      mode: min
+      save_best_only: true
+
+  epochs: 500
+  batch_size: 64
 
 model:
   LSTM_units: [64, 64]
@@ -6,17 +52,4 @@ model:
   eval_units: 64
   eval_dropout_rate: 0.2
   output_units: 1
-  l2_factor: 0.000000001
-
-train:
-  optimizer:
-    learning_rate: 0.00001
-  loss:
-    main_output: "binary_crossentropy"
-    aux_output: "binary_crossentropy"
-  loss_weights:
-    main_output: 1
-    aux_output: 0.5
-  metrics:
-    main_output: "accuracy"
-    aux_output: "accuracy"
+  l2_factor: null
