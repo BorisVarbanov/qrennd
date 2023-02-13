@@ -2,7 +2,6 @@
 # Module import
 import os
 import pathlib
-from tensorflow.keras.utils import set_random_seed
 
 from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
 
@@ -40,7 +39,14 @@ config.checkpoint_dir.mkdir(exist_ok=True, parents=True)
 
 # %%
 # set random seed for tensorflow, numpy and python
-set_random_seed(config.seed)
+import random
+import numpy as np
+import tensorflow as tf
+
+random.seed(config.seed)
+np.random.seed(config.seed)
+tf.random.set_seed(config.seed)
+
 
 # %%
 train_data, val_data = load_datasets(config=config, layout=layout)
