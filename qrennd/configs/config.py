@@ -27,10 +27,10 @@ class Config:
         data_dir: str,
         output_dir: str,
         add_timestamp: bool = True,
+        seed: int = 0,
         *,
         init_weights: Optional[str] = None,
     ) -> None:
-
         self.experiment = experiment
 
         if add_timestamp:
@@ -49,6 +49,8 @@ class Config:
         self.output_dir = Path(output_dir)
 
         self.init_weights = init_weights
+
+        self.seed = seed
 
     @property
     def experiment_dir(self) -> Path:
@@ -95,11 +97,12 @@ class Config:
             ) from error
 
         try:
-            metadata = setup["metadata"]
+            metadata = setup.pop("metadata")
 
             experiment = metadata["experiment"]
             run = metadata["run"]
             init_weights = metadata.get("init_weights", None)
+            seed = metadata.get("seed", 0)
 
         except KeyError:
             raise ValueError("Invalid config file format.")
@@ -111,6 +114,7 @@ class Config:
             data_dir,
             output_dir,
             init_weights=init_weights,
+            seed=seed,
         )
 
     def to_yaml(self, filepath: str) -> None:
@@ -118,6 +122,7 @@ class Config:
             experiment=self.experiment,
             run=self.run,
             init_weights=self.init_weights,
+            seed=self.seed,
         )
         setup = dict(
             metadata=metadata,

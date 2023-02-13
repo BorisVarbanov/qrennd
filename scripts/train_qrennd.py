@@ -7,10 +7,6 @@ from tensorflow.keras.utils import set_random_seed
 from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
 
 # %%
-# set random seed for tensorflow, numpy and python
-set_random_seed(0)
-
-# %%
 # Parameters
 EXP_NAME = "20230131-d3_rot-surf_circ-level_large-dataset"
 
@@ -41,6 +37,10 @@ config = Config.from_yaml(
 
 config.log_dir.mkdir(exist_ok=True, parents=True)
 config.checkpoint_dir.mkdir(exist_ok=True, parents=True)
+
+# %%
+# set random seed for tensorflow, numpy and python
+set_random_seed(config.seed)
 
 # %%
 train_data, val_data = load_datasets(config=config, layout=layout)
