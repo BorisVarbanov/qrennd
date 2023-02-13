@@ -2,8 +2,13 @@
 # Module import
 import os
 import pathlib
+from tensorflow.keras.utils import set_random_seed
 
 from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
+
+# %%
+# set random seed for tensorflow, numpy and python
+set_random_seed(0)
 
 # %%
 # Parameters
