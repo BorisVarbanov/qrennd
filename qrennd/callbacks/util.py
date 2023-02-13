@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import (
 from qrennd.configs import Config
 
 
-def get_checkpoint_filename(params: Dict[str, Any]) -> str:
+def get_filename(params: Dict[str, Any]) -> str:
     if params["save_best_only"]:
         filename = "weights.hdf5"
         return filename
@@ -20,9 +20,9 @@ def get_checkpoint_filename(params: Dict[str, Any]) -> str:
 
 
 def get_callbacks(config: Config) -> Tuple[Callback]:
-    params = config.train.get("callbacks")
+    params = config.train["callbacks"]
 
-    checkpoint_filename = get_checkpoint_filename(params["checkpoint"])
+    checkpoint_filename = get_filename(params["checkpoint"])
     model_checkpoint = ModelCheckpoint(
         filepath=config.checkpoint_dir / checkpoint_filename,
         **params["checkpoint"],
