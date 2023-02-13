@@ -14,7 +14,6 @@ CONFIG_FILE = "config.yaml"
 
 USERNAME = os.environ.get("USER")
 SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
-SCRATH_DIR = pathlib.Path.cwd()
 
 DATA_DIR = SCRATH_DIR / "data"
 OUTPUT_DIR = SCRATH_DIR / "output"
@@ -27,19 +26,13 @@ CONFIG_DIR = SCRIPT_DIR / "configs"
 
 # %%
 # Load setup objects
-try:
-    layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
-except FileNotFoundError as error:
-    raise ValueError("Invalid layout filepath provided") from error
 
-try:
-    config = Config.from_yaml(
-        filepath=CONFIG_DIR / "config.yaml",
-        data_dir=DATA_DIR,
-        output_dir=OUTPUT_DIR,
-    )
-except FileNotFoundError as error:
-    raise ValueError("Invalid config filepath provided") from error
+layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
+config = Config.from_yaml(
+    filepath=CONFIG_DIR / "config.yaml",
+    data_dir=DATA_DIR,
+    output_dir=OUTPUT_DIR,
+)
 
 config.log_dir.mkdir(exist_ok=True, parents=True)
 config.checkpoint_dir.mkdir(exist_ok=True, parents=True)
