@@ -109,8 +109,11 @@ def get_model(
 
     concat_input = concat((output, eval_input), axis=1)
 
-    l2_factor = config.model.get("l2_factor", 0.01)
-    regulizar = keras.regularizers.L2(l2_factor)
+    l2_factor = config.model.get("l2_factor")
+    if l2_factor is not None:
+        regularizer = keras.regularizers.L2(l2_factor)
+    else:
+        regularizer = None
 
     eval_units = config.model.get("eval_units", 64)
 
@@ -120,7 +123,7 @@ def get_model(
     dense_layer = keras.layers.Dense(
         units=eval_units,
         activation="relu",
-        kernel_regularizer=regulizar,
+        kernel_regularizer=regularizer,
         name="main_dense",
     )
     main_output = dense_layer(concat_input)
@@ -139,11 +142,15 @@ def get_model(
     )
     main_output = output_layer(main_output)
 
-    regulizar = keras.regularizers.L2(l2_factor)
+    if l2_factor is not None:
+        regularizer = keras.regularizers.L2(l2_factor)
+    else:
+        regularizer = None
+
     dense_layer = keras.layers.Dense(
         units=eval_units,
         activation="relu",
-        kernel_regularizer=regulizar,
+        kernel_regularizer=regularizer,
         name="aux_dense",
     )
     aux_output = dense_layer(output)
