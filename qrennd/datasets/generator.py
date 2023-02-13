@@ -21,8 +21,6 @@ class DataGenerator(Sequence):
         batch_size: int,
         lstm_input: str,
         eval_input: str,
-        shuffle: bool = True,
-        seed: Optional[int] = None,
         proj_matrix: Optional[xr.DataArray] = None,
     ) -> None:
         num_states = len(states)
@@ -31,10 +29,6 @@ class DataGenerator(Sequence):
         self.num_groups = num_rounds
         self.group_size = shots * num_states
         self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.rng = np.random.default_rng(seed) if shuffle else None
-
-        self._groups = np.arange(self.num_groups)
 
         self._lstm_inputs = []
         self._eval_inputs = []
@@ -96,18 +90,6 @@ class DataGenerator(Sequence):
             log_errors = log_meas ^ dataset.log_state
             self._outputs.append(log_errors.values)
 
-    def on_epoch_end(self):
-        if self.shuffle:
-            self.rng.shuffle(self._groups)
-
-            inds = np.arange(self.group_size)
-            for group in range(self.num_groups):
-                self.rng.shuffle(inds)
-
-                self._lstm_inputs[group] = self._lstm_inputs[group][inds]
-                self._eval_inputs[group] = self._eval_inputs[group][inds]
-                self._outputs[group] = self._outputs[group][inds]
-
     def __len__(self) -> int:
         """
         __len__ Returns the number of batches per epoch
@@ -129,8 +111,7 @@ class DataGenerator(Sequence):
             A tuple of a dictionary with the input data, consisting of the defects and
             final defects, together with the output label.
         """
-        group_ind = index % self.num_groups
-        group = self._groups[group_ind]
+        group = index % self.num_groups
 
         batch_ind = index // self.num_groups
         start_shot = batch_ind * self.batch_size
