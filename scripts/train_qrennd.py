@@ -15,7 +15,7 @@ set_random_seed(0)
 EXP_NAME = "20230131-d3_rot-surf_circ-level_large-dataset"
 
 LAYOUT_FILE = "d3_rotated_layout.yaml"
-CONFIG_FILE = "config.yaml"
+CONFIG_FILE = "base_config.yaml"
 
 USERNAME = os.environ.get("USER")
 SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
@@ -34,7 +34,7 @@ CONFIG_DIR = SCRIPT_DIR / "configs"
 
 layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
 config = Config.from_yaml(
-    filepath=CONFIG_DIR / "config.yaml",
+    filepath=CONFIG_DIR / CONFIG_FILE,
     data_dir=DATA_DIR,
     output_dir=OUTPUT_DIR,
 )
