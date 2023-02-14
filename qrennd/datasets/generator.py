@@ -35,14 +35,14 @@ class DataGenerator(Sequence):
         self._eval_inputs = []
         self._outputs = []
         self.load_datasets(
-            dirpath,
-            shots,
-            states,
-            rounds,
-            lstm_input,
-            eval_input,
-            proj_matrix,
-            folder_format_name,
+            dirpath=dirpath,
+            shots=shots,
+            states=states,
+            rounds=rounds,
+            lstm_input=lstm_input,
+            eval_input=eval_input,
+            folder_format_name=folder_format_name,
+            proj_matrix=proj_matrix,
         )
 
     def load_datasets(
@@ -54,7 +54,7 @@ class DataGenerator(Sequence):
         lstm_input: str,
         eval_input: str,
         folder_format_name: str,
-        proj_matrix: Optional[xr.DataArray],
+        proj_matrix: Optional[xr.DataArray] = None,
     ) -> xr.Dataset:
         for num_rounds in rounds:
             _datasets = []
