@@ -2,15 +2,16 @@
 # Module import
 import os
 import pathlib
+import random
+import numpy as np
+import tensorflow as tf
 
 from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
 
 # %%
 # Parameters
-EXP_NAME = "20230131-d3_rot-surf_circ-level_large-dataset"
-
 LAYOUT_FILE = "d3_rotated_layout.yaml"
-CONFIG_FILE = "config.yaml"
+CONFIG_FILE = "base_config.yaml"
 
 USERNAME = os.environ.get("USER")
 SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
@@ -29,13 +30,20 @@ CONFIG_DIR = SCRIPT_DIR / "configs"
 
 layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
 config = Config.from_yaml(
-    filepath=CONFIG_DIR / "config.yaml",
+    filepath=CONFIG_DIR / CONFIG_FILE,
     data_dir=DATA_DIR,
     output_dir=OUTPUT_DIR,
 )
 
 config.log_dir.mkdir(exist_ok=True, parents=True)
 config.checkpoint_dir.mkdir(exist_ok=True, parents=True)
+
+# %%
+# set random seed for tensorflow, numpy and python
+random.seed(config.seed)
+np.random.seed(config.seed)
+tf.random.set_seed(config.seed)
+
 
 # %%
 train_data, val_data = load_datasets(config=config, layout=layout)

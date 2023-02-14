@@ -10,6 +10,7 @@ def load_datasets(config: Config, layout: Layout) -> Dict[str, DataGenerator]:
 
     lstm_input = config.dataset["lstm_input"]
     eval_input = config.dataset["eval_input"]
+    folder_format_name = config.dataset["folder_format_name"]
 
     if eval_input == "defects":
         rot_basis = config.dataset["rot_basis"]
@@ -33,6 +34,7 @@ def load_datasets(config: Config, layout: Layout) -> Dict[str, DataGenerator]:
                 lstm_input=lstm_input,
                 eval_input=eval_input,
                 proj_matrix=proj_matrix,
+                folder_format_name=folder_format_name,
                 **dataset_params,
             )
 

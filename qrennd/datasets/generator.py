@@ -4,6 +4,7 @@ from math import floor
 from pathlib import Path
 from typing import List, Optional
 
+import numpy as np
 import xarray as xr
 from tensorflow.keras.utils import Sequence
 
@@ -20,7 +21,8 @@ class DataGenerator(Sequence):
         batch_size: int,
         lstm_input: str,
         eval_input: str,
-        proj_matrix: Optional[xr.DataArray],
+        folder_format_name: str,
+        proj_matrix: Optional[xr.DataArray] = None,
     ) -> None:
         num_states = len(states)
         num_rounds = len(rounds)
@@ -33,7 +35,14 @@ class DataGenerator(Sequence):
         self._eval_inputs = []
         self._outputs = []
         self.load_datasets(
-            dirpath, shots, states, rounds, lstm_input, eval_input, proj_matrix
+            dirpath,
+            shots,
+            states,
+            rounds,
+            lstm_input,
+            eval_input,
+            proj_matrix,
+            folder_format_name,
         )
 
     def load_datasets(
@@ -44,12 +53,15 @@ class DataGenerator(Sequence):
         rounds: List[int],
         lstm_input: str,
         eval_input: str,
+        folder_format_name: str,
         proj_matrix: Optional[xr.DataArray],
     ) -> xr.Dataset:
         for num_rounds in rounds:
             _datasets = []
             for state in states:
-                experiment = f"surf-code_d3_bZ_s{state}_n{shots}_r{num_rounds}"
+                experiment = folder_format_name.format(
+                    state=state, shots=shots, num_rounds=num_rounds
+                )
                 dataset = xr.open_dataset(dirpath / experiment / "measurements.nc")
                 _datasets.append(dataset)
 
@@ -110,15 +122,15 @@ class DataGenerator(Sequence):
             A tuple of a dictionary with the input data, consisting of the defects and
             final defects, together with the output label.
         """
-        group_ind = index % self.num_groups
-        batch_ind = index // self.num_groups
+        group = index % self.num_groups
 
-        start_ind = batch_ind * self.batch_size
-        end_ind = start_ind + self.batch_size
+        batch_ind = index // self.num_groups
+        start_shot = batch_ind * self.batch_size
+        end_shot = start_shot + self.batch_size
 
         inputs = dict(
-            lstm_input=self._lstm_inputs[group_ind][start_ind:end_ind],
-            eval_input=self._eval_inputs[group_ind][start_ind:end_ind],
+            lstm_input=self._lstm_inputs[group][start_shot:end_shot],
+            eval_input=self._eval_inputs[group][start_shot:end_shot],
         )
-        outputs = self._outputs[group_ind][start_ind:end_ind]
+        outputs = self._outputs[group][start_shot:end_shot]
         return inputs, outputs
