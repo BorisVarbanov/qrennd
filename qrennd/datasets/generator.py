@@ -21,6 +21,7 @@ class DataGenerator(Sequence):
         batch_size: int,
         lstm_input: str,
         eval_input: str,
+        folder_format_name: str,
         shuffle: bool = True,
         seed: Optional[int] = None,
         proj_matrix: Optional[xr.DataArray] = None,
@@ -33,6 +34,7 @@ class DataGenerator(Sequence):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.rng = np.random.default_rng(seed) if shuffle else None
+        self.folder_format_name = folder_format_name
 
         self._groups = np.arange(self.num_groups)
 
@@ -40,7 +42,14 @@ class DataGenerator(Sequence):
         self._eval_inputs = []
         self._outputs = []
         self.load_datasets(
-            dirpath, shots, states, rounds, lstm_input, eval_input, proj_matrix
+            dirpath,
+            shots,
+            states,
+            rounds,
+            lstm_input,
+            eval_input,
+            proj_matrix,
+            folder_format_name,
         )
 
     def load_datasets(
@@ -51,12 +60,15 @@ class DataGenerator(Sequence):
         rounds: List[int],
         lstm_input: str,
         eval_input: str,
+        folder_format_name: str,
         proj_matrix: Optional[xr.DataArray],
     ) -> xr.Dataset:
         for num_rounds in rounds:
             _datasets = []
             for state in states:
-                experiment = f"surf-code_d3_bZ_s{state}_n{shots}_r{num_rounds}"
+                experiment = folder_format_name.format(
+                    state=state, shots=shots, num_rounds=num_rounds
+                )
                 dataset = xr.open_dataset(dirpath / experiment / "measurements.nc")
                 _datasets.append(dataset)
 

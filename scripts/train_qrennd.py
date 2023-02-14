@@ -7,8 +7,6 @@ from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
 
 # %%
 # Parameters
-EXP_NAME = "20230131-d3_rot-surf_circ-level_large-dataset"
-
 LAYOUT_FILE = "d3_rotated_layout.yaml"
 CONFIG_FILE = "base_config.yaml"
 
