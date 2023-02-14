@@ -31,8 +31,6 @@ class DataGenerator(Sequence):
         self.group_size = shots * num_states
         self.batch_size = batch_size
 
-        self.folder_format_name = folder_format_name
-
         self._lstm_inputs = []
         self._eval_inputs = []
         self._outputs = []

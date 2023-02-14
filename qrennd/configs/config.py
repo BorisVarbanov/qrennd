@@ -27,8 +27,8 @@ class Config:
         data_dir: str,
         output_dir: str,
         add_timestamp: bool = True,
-        seed: int = 0,
         *,
+        seed: Optional[int] = None,
         init_weights: Optional[str] = None,
     ) -> None:
         self.experiment = experiment
@@ -102,7 +102,7 @@ class Config:
             experiment = metadata["experiment"]
             run = metadata["run"]
             init_weights = metadata.get("init_weights", None)
-            seed = metadata.get("seed", 0)
+            seed = metadata.get("seed")
 
         except KeyError:
             raise ValueError("Invalid config file format.")

@@ -2,6 +2,9 @@
 # Module import
 import os
 import pathlib
+import random
+import numpy as np
+import tensorflow as tf
 
 from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
 
@@ -37,10 +40,6 @@ config.checkpoint_dir.mkdir(exist_ok=True, parents=True)
 
 # %%
 # set random seed for tensorflow, numpy and python
-import random
-import numpy as np
-import tensorflow as tf
-
 random.seed(config.seed)
 np.random.seed(config.seed)
 tf.random.set_seed(config.seed)
