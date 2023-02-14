@@ -74,6 +74,8 @@ history = model.fit(
     batch_size=config.train["epochs"],
     epochs=config.train["epochs"],
     callbacks=callbacks,
+    shuffle=True,
+    verbose=0,
 )
 
 # %%
