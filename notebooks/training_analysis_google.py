@@ -204,6 +204,7 @@ ax.set_xlim(0, MWPM_qec_round[MAX_QEC-1] + 0.5)
 ax.plot([], [], " ", label=f"$\\epsilon_L = {error_rate.nominal_value:.4f}$")
 ax.legend()
 ax.grid(which="major")
+ax.set_title("Simulated data")
 
 # %% [markdown]
 # ## 2) Test experimental data
@@ -265,5 +266,6 @@ ax.set_xlim(0, MWPM_qec_round[MAX_QEC-1] + 0.5)
 ax.plot([], [], " ", label=f"$\\epsilon_L = {error_rate.nominal_value:.4f}$")
 ax.legend()
 ax.grid(which="major")
+ax.set_title("Experimental data")
 
 # %%
