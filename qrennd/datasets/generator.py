@@ -197,7 +197,7 @@ class DataGeneratorGoogle(Sequence):
             anc_meas = dataset.anc_meas.transpose("shot", "qec_round", "anc_qubit")
             data_meas = dataset.data_meas.transpose("shot", "data_qubit")
             sweeps = dataset.sweeps.transpose("shot", "data_qubit")
-            sweeps = sweeps ^ np.array(
+            sweeps_edited = sweeps ^ np.array(
                 [False, True, False, True, False, True, False, True, False]
             )
 
@@ -210,7 +210,7 @@ class DataGeneratorGoogle(Sequence):
             elif lstm_input == "defects":
                 # get frame
                 proj_matrix = proj_matrix.sel(anc_qubit=["Z1", "Z2", "Z3", "Z4"])
-                frame_z = (sweeps @ proj_matrix) % 2
+                frame_z = (sweeps_edited @ proj_matrix) % 2
                 frame_x = anc_meas.sel(qec_round=1, anc_qubit=["X1", "X2", "X3", "X4"])
                 frame = xr.concat([frame_x, frame_z], dim="anc_qubit")
                 # get defects
@@ -249,7 +249,9 @@ class DataGeneratorGoogle(Sequence):
             log_meas = (
                 data_meas.sel(data_qubit=["D9", "D8", "D7"]).sum(dim="data_qubit") % 2
             )
-            log_state = sweeps.sum(dim="data_qubit") % 2
+            log_state = (
+                sweeps.sel(data_qubit=["D9", "D8", "D7"]).sum(dim="data_qubit") % 2
+            ) ^ 1
             log_errors = log_meas ^ log_state
             log_errors = log_errors.values
 
