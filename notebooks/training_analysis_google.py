@@ -236,7 +236,13 @@ log_fid = xr.load_dataset(DIR / "test_results_experimental.nc")
 # google's data
 MWPM_log_fid = np.array([0.98362, 0.90834, 0.84856, 0.78104, 0.7425 , 0.70236, 0.67078,
        0.64652, 0.61526, 0.60846, 0.58354, 0.57838, 0.56722])
-MWPM_qec_round = np.arange(1, 25+1, 2)
+CORR_log_fid = np.array([0.98362, 0.91344, 0.85956, 0.80068, 0.76252, 0.7271 , 0.69716,
+       0.6677 , 0.6393 , 0.62876, 0.6065 , 0.59728, 0.57862])
+BELIEF_log_fid = np.array([0.98358, 0.92146, 0.87334, 0.81486, 0.78084, 0.74368, 0.71576,
+       0.68738, 0.65658, 0.6465 , 0.6217 , 0.61562, 0.59626])
+TENSOR_log_fid = np.array([0.98362, 0.92314, 0.87512, 0.82052, 0.78392, 0.74664, 0.71704,
+       0.68892, 0.66008, 0.64562, 0.62196, 0.61106, 0.59156])
+dec_qec_round = np.arange(1, 25+1, 2)
 
 # %%
 model_decay = LogicalFidelityDecay()
@@ -250,13 +256,22 @@ MAX_QEC = min(len(log_fid.log_fid), len(MWPM_log_fid))
 
 ax = out.plot_fit()
 ax.plot(
+    dec_qec_round[:MAX_QEC], MWPM_log_fid[:MAX_QEC], "r.", markersize=10, label="MWPM"
+)
+ax.plot(
+    dec_qec_round[:MAX_QEC], CORR_log_fid[:MAX_QEC], "c.", markersize=10, label="corr"
+)
+ax.plot(
+    dec_qec_round[:MAX_QEC], BELIEF_log_fid[:MAX_QEC], "g.", markersize=10, label="belief"
+)
+ax.plot(
+    dec_qec_round[:MAX_QEC], TENSOR_log_fid[:MAX_QEC], "m.", markersize=10, label="tensor"
+)
+ax.plot(
     log_fid.qec_round.values[:MAX_QEC],
     log_fid.log_fid.values[:MAX_QEC],
     "b.",
     markersize=10,
-)
-ax.plot(
-    MWPM_qec_round[:MAX_QEC], MWPM_log_fid[:MAX_QEC], "r.", markersize=10, label="MWPM"
 )
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
