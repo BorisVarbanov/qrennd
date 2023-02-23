@@ -59,15 +59,15 @@ class DataGenerator(Sequence):
         folder_format_name: str,
         proj_matrix: Optional[xr.DataArray] = None,
     ) -> xr.Dataset:
-        rot_basis = "X" if rot_basis else "Z"
+        basis = "X" if rot_basis else "Z"
         for num_rounds in rounds:
             _datasets = []
             for state in states:
                 experiment = folder_format_name.format(
+                    basis=basis,
                     state=state,
                     shots=shots,
                     num_rounds=num_rounds,
-                    rot_basis=rot_basis,
                 )
                 dataset = xr.open_dataset(dirpath / experiment / "measurements.nc")
                 _datasets.append(dataset)
@@ -187,10 +187,10 @@ class DataGeneratorGoogle(Sequence):
         folder_format_name: str,
         proj_matrix: Optional[xr.DataArray] = None,
     ) -> xr.Dataset:
-        rot_basis = "X" if rot_basis else "Z"
+        basis = "X" if rot_basis else "Z"
         for num_rounds in rounds:
             experiment = folder_format_name.format(
-                rot_basis=rot_basis, shots=shots, num_rounds=num_rounds
+                basis=basis, shots=shots, num_rounds=num_rounds
             )
             dataset = xr.open_dataset(dirpath / experiment / "measurements.nc")
 

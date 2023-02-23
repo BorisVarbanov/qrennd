@@ -15,7 +15,7 @@ dataset:
   rot_basis: false
   lstm_input: "defects"
   eval_input: "defects"
-  folder_format_name: "surface_code_b{rot_basis}_d3_r{num_rounds:02d}_center_3_5"
+  folder_format_name: "surface_code_b{basis}_d3_r{num_rounds:02d}_center_3_5"
 
 train:
   optimizer:

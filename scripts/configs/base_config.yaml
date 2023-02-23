@@ -17,7 +17,7 @@ dataset:
   rot_basis: false
   lstm_input: "defects"
   eval_input: "defects"
-  folder_format_name: "surf-code_d3_b{rot_basis}_s{state}_n{shots}_r{num_rounds}"
+  folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
 
 train:
   optimizer:
