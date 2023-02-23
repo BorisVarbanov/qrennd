@@ -1,7 +1,7 @@
 """Parameter configuration (Config) class."""
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Type, TypeVar
+from typing import Dict, Optional, Type, TypeVar, Union
 
 import yaml
 
@@ -25,7 +25,7 @@ class Config:
         run: str,
         setup: Dict[str, dict],
         data_dir: str,
-        output_dir: str,
+        output_dir: Optional[str] = None,
         add_timestamp: bool = True,
         *,
         seed: Optional[int] = None,
@@ -46,7 +46,10 @@ class Config:
         self.dataset = setup["dataset"]
 
         self.data_dir = Path(data_dir)
-        self.output_dir = Path(output_dir)
+        if output_dir is not None:
+            self.output_dir = Path(output_dir)
+        else:
+            self.output_dir = None
 
         self.init_weights = init_weights
 
@@ -58,6 +61,8 @@ class Config:
 
     @property
     def run_dir(self) -> Path:
+        if self.output_dir is None:
+            raise ValueError("output_dir not specified in config.")
         return self.output_dir / self.experiment / self.run
 
     @property
