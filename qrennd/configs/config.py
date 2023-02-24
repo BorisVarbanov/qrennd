@@ -1,7 +1,7 @@
 """Parameter configuration (Config) class."""
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Type, TypeVar, Union
+from typing import Dict, Optional, Type, TypeVar
 
 import yaml
 
