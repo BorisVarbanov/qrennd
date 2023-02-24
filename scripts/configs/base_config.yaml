@@ -14,10 +14,17 @@ dataset:
     rounds: !range [1, 20, 2]
     states: [0, 1]
 
+  test:
+    shots: 20000
+    rounds: !range [1, 20, 2]
+    states: [0, 1]
+
   rot_basis: false
+  folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
+
   lstm_input: "defects"
   eval_input: "defects"
-  folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
+
 
 train:
   optimizer:
