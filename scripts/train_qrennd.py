@@ -52,7 +52,7 @@ train_data, val_data = load_datasets(config=config, layout=layout)
 seq_size = len(layout.get_qubits(role="anc"))
 
 eval_input = config.dataset["eval_input"]
-if eval_input == "measurement":
+if eval_input == "measurements":
     vec_size = len(layout.get_qubits(role="data"))
 else:
     vec_size = int(0.5 * seq_size)
