@@ -8,13 +8,13 @@ from .datasets import (
     DataGeneratorGoogle,
     load_datasets,
     load_datasets_google,
-    preprocess,
+    preprocessing,
 )
 from .layouts import Layout
 from .models import get_model
 
 __all__ = [
-    "preprocess",
+    "preprocessing",
     "get_model",
     "get_callbacks",
     "load_datasets",
