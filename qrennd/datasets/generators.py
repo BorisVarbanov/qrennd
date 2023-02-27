@@ -18,7 +18,7 @@ def dataset_genereator(
     shots: int,
     states: List[int],
     rounds: List[int],
-) -> Generator[xr.Dataset]:
+) -> Generator:
     for num_rounds in rounds:
         _datasets = []
         for state in states:
