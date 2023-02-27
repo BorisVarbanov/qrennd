@@ -23,6 +23,7 @@ ipykernel = {version = "^6.20.2", optional = true}
 jupytext = {version = "^1.14.4", optional = true}
 tensorflow = {version = "2.4.1", optional = true}
 scipy = "1.9.2"
+lmfit = "^1.1.0"
 
 [tool.poetry.extras]
 notebook = ["jupyter", "ipykernel", "jupytext"]
