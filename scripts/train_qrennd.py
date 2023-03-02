@@ -46,7 +46,8 @@ tf.random.set_seed(config.seed)
 
 
 # %%
-train_data, val_data = load_datasets(config=config, layout=layout)
+train_data = load_datasets(config=config, layout=layout, dataset_name="train")
+val_data = load_datasets(config=config, layout=layout, dataset_name="dev")
 
 # %%
 seq_size = len(layout.get_qubits(role="anc"))

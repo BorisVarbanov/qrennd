@@ -3,8 +3,8 @@ from typing import Optional
 from xarray import DataArray, Dataset
 
 
-def get_syndromes(anc_meas: DataArray) -> DataArray:
-    if anc_meas.meas_reset:
+def get_syndromes(anc_meas: DataArray, meas_reset: bool) -> DataArray:
+    if meas_reset:
         return anc_meas
 
     shifted_meas = anc_meas.shift(qec_round=1, fill_value=0)
@@ -39,15 +39,24 @@ def preprocess_data(
 ):
     anc_meas = dataset.anc_meas.transpose(..., "qec_round", "anc_qubit")
     data_meas = dataset.data_meas.transpose(..., "data_qubit")
-    syndromes = get_syndromes(anc_meas)
+    # due to stacking of "data_init" and "shot" in a common coordinate "run"
+    # the ideal measurements have also "run" dimension
+    ideal_anc_meas = dataset.ideal_anc_meas.transpose(..., "qec_round", "anc_qubit")
+    ideal_data_meas = dataset.ideal_data_meas.transpose(..., "data_qubit")
+
+    data_meas = data_meas ^ ideal_data_meas
+    anc_meas = anc_meas ^ ideal_anc_meas
 
     inputs = {}
 
     if lstm_input == "measurements":
-        inputs["lstm_input"] = anc_meas.values
-    if lstm_input == "syndromes":
+        # without ideal correction
+        inputs["lstm_input"] = anc_meas.values ^ ideal_anc_meas
+    elif lstm_input == "syndromes":
+        syndromes = get_syndromes(anc_meas, meas_reset=dataset.meas_reset.values)
         inputs["lstm_input"] = syndromes.values
     elif lstm_input == "defects":
+        syndromes = get_syndromes(anc_meas, meas_reset=dataset.meas_reset.values)
         defects = get_defects(syndromes)
         inputs["lstm_input"] = defects.values
     else:
@@ -57,7 +66,11 @@ def preprocess_data(
         )
 
     if eval_input == "measurements":
-        inputs["eval_input"] = data_meas.values
+        # without ideal correction
+        inputs["eval_input"] = data_meas.values ^ ideal_data_meas
+    elif eval_input == "syndromes":
+        proj_syndrome = (data_meas @ proj_mat) % 2
+        inputs["eval_input"] = proj_syndrome.values
     elif eval_input == "defects":
         proj_syndrome = (data_meas @ proj_mat) % 2
         final_defects = get_final_defects(syndromes, proj_syndrome)
@@ -68,7 +81,7 @@ def preprocess_data(
             "options are 'measurements', 'defects'."
         )
 
-    log_meas = data_meas.sum(dim="data_qubit") % 2
-    log_errors = log_meas ^ dataset.log_state
+    log_errors = data_meas.sum(dim="data_qubit") % 2
+    log_errors = log_errors.values
 
-    return inputs, log_errors.values
+    return inputs, log_errors
