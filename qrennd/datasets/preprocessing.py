@@ -3,8 +3,8 @@ from typing import Optional
 from xarray import DataArray, Dataset
 
 
-def get_syndromes(anc_meas: DataArray, meas_reset: bool) -> DataArray:
-    if meas_reset:
+def get_syndromes(anc_meas: DataArray) -> DataArray:
+    if anc_meas.meas_reset:
         return anc_meas
 
     shifted_meas = anc_meas.shift(qec_round=1, fill_value=0)
@@ -37,51 +37,54 @@ def preprocess_data(
     eval_input: str,
     proj_mat: Optional[DataArray] = None,
 ):
-    anc_meas = dataset.anc_meas.transpose(..., "qec_round", "anc_qubit")
-    data_meas = dataset.data_meas.transpose(..., "data_qubit")
-    # due to stacking of "data_init" and "shot" in a common coordinate "run"
-    # the ideal measurements have also "run" dimension
-    ideal_anc_meas = dataset.ideal_anc_meas.transpose(..., "qec_round", "anc_qubit")
-    ideal_data_meas = dataset.ideal_data_meas.transpose(..., "data_qubit")
+    anc_meas = dataset.anc_meas
+    data_meas = dataset.data_meas
 
-    data_meas = data_meas ^ ideal_data_meas
-    anc_meas = anc_meas ^ ideal_anc_meas
-
-    inputs = {}
+    ideal_anc_meas = dataset.ideal_anc_meas
+    ideal_data_meas = dataset.ideal_data_meas
 
     if lstm_input == "measurements":
-        # without ideal correction
-        inputs["lstm_input"] = anc_meas.values ^ ideal_anc_meas
+        lstm_inputs = anc_meas
     elif lstm_input == "syndromes":
-        syndromes = get_syndromes(anc_meas, meas_reset=dataset.meas_reset.values)
-        inputs["lstm_input"] = syndromes.values
+        anc_flips = anc_meas ^ ideal_anc_meas
+        lstm_inputs = get_syndromes(anc_flips)
     elif lstm_input == "defects":
-        syndromes = get_syndromes(anc_meas, meas_reset=dataset.meas_reset.values)
-        defects = get_defects(syndromes)
-        inputs["lstm_input"] = defects.values
+        anc_flips = anc_meas ^ ideal_anc_meas
+        syndromes = get_syndromes(anc_flips)
+        lstm_inputs = get_defects(syndromes)
     else:
         raise ValueError(
             f"Unknown input data type {lstm_input}, the possible "
             "options are 'measurements', 'syndromes' and 'defects'."
         )
+    lstm_inputs = lstm_inputs.stack(run=["init", "shot"])
+    lstm_inputs = lstm_inputs.transpose("run", "qec_round", "anc_qubit")
 
     if eval_input == "measurements":
-        # without ideal correction
-        inputs["eval_input"] = data_meas.values ^ ideal_data_meas
+        eval_inputs = dataset.data_meas
     elif eval_input == "syndromes":
-        proj_syndrome = (data_meas @ proj_mat) % 2
-        inputs["eval_input"] = proj_syndrome.values
+        data_flips = data_meas ^ ideal_data_meas
+        eval_inputs = (data_meas @ proj_mat) % 2
     elif eval_input == "defects":
-        proj_syndrome = (data_meas @ proj_mat) % 2
-        final_defects = get_final_defects(syndromes, proj_syndrome)
-        inputs["eval_input"] = final_defects.values
+        data_flips = data_meas ^ ideal_data_meas
+        proj_syndrome = (data_flips @ proj_mat) % 2
+        eval_inputs = get_final_defects(syndromes, proj_syndrome)
     else:
         raise ValueError(
             f"Unknown input data type {lstm_input}, the possible "
             "options are 'measurements', 'defects'."
         )
+    eval_inputs = eval_inputs.stack(run=["init", "shot"])
+    eval_inputs = eval_inputs.transpose("run", ...)
 
-    log_errors = data_meas.sum(dim="data_qubit") % 2
-    log_errors = log_errors.values
+    data_errors = data_meas ^ ideal_data_meas
+    log_errors = data_errors.sum(dim="data_qubit") % 2
+    log_errors = log_errors.stack(run=["init", "shot"])
 
-    return inputs, log_errors
+    inputs = dict(
+        lstm_input=lstm_inputs.values.astype(bool),
+        eval_input=eval_inputs.values.astype(bool),
+    )
+    outputs = log_errors.values.astype(bool)
+
+    return inputs, outputs
