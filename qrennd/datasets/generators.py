@@ -1,14 +1,6 @@
-# %%
-# Module import
-from math import floor
-from pathlib import Path
-from typing import Generator, List, Optional
+from typing import Generator, List
 
-import numpy as np
 import xarray as xr
-from tensorflow.keras.utils import Sequence
-
-from .preprocessing import get_defects, get_final_defects, get_syndromes
 
 
 def dataset_genereator(
@@ -34,6 +26,5 @@ def dataset_genereator(
                 raise ValueError("Invalid experiment data directory") from error
             _datasets.append(dataset)
 
-        dataset = xr.concat(_datasets, dim="data_init")
-        dataset = dataset.stack(run=["data_init", "shot"])
+        dataset = xr.concat(_datasets, dim="init")
         yield dataset
