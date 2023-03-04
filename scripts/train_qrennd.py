@@ -52,8 +52,7 @@ val_data = load_datasets(config=config, layout=layout, dataset_name="dev")
 # %%
 seq_size = len(layout.get_qubits(role="anc"))
 
-eval_input = config.dataset["eval_input"]
-if eval_input == "measurement":
+if config.dataset["input"] == "measurements":
     vec_size = len(layout.get_qubits(role="data"))
 else:
     vec_size = int(0.5 * seq_size)
