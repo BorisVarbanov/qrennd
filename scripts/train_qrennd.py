@@ -11,7 +11,7 @@ from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
 # %%
 # Parameters
 LAYOUT_FILE = "d3_rotated_layout.yaml"
-CONFIG_FILE = "base_config.yaml"
+CONFIG_FILE = "base_config_google_d5.yaml"
 
 USERNAME = os.environ.get("USER")
 SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
