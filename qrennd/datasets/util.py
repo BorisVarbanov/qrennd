@@ -1,12 +1,7 @@
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
-from .preprocessing import (
-    preprocess_data_for_MWPM,
-    to_defects,
-    to_measurements,
-    to_syndromes,
-)
+from .preprocessing import to_defects, to_measurements, to_syndromes
 from .sequences import RaggedSequence
 
 
@@ -34,10 +29,6 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         generator = (to_syndromes(dataset, proj_matrix) for dataset in dataset_gen)
     elif input_type == "defects":
         generator = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
-    elif input_type == "MWPM":
-        generator = (
-            preprocess_data_for_MWPM(dataset, proj_matrix) for dataset in dataset_gen
-        )
     else:
         raise ValueError(
             f"Unknown input data type {input_type}, the possible "

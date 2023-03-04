@@ -1,6 +1,5 @@
 from typing import Optional
 
-import numpy as np
 from xarray import DataArray, Dataset
 
 
@@ -135,42 +134,5 @@ def to_defects(
         eval_input=eval_inputs.values.astype(bool),
     )
     outputs = log_errors.values.astype(bool)
-
-    return inputs, outputs
-
-
-def preprocess_data_for_MWPM(
-    dataset: Dataset,
-    proj_mat: DataArray,
-):
-    """
-    Preprocess dataset to generate defect inputs for MWPM
-    and the logical errors.
-
-    Parameters
-    ----------
-    dataset
-        Assumes to have the following variables and dimensions:
-        - anc_meas: [shots, qec_cycle, anc_qubit]
-        - ideal_anc_meas: [qec_cycle, anc_qubit]
-        - data_meas: [shot, data_qubit]
-        - idea_data_meas: [data_qubit]
-    proj_mat
-        Assumes to have dimensions [data_qubits, stab],
-        where stab correspond to the final stabilizers.
-    """
-    inputs, outputs = to_defects(
-        dataset=dataset,
-        proj_mat=proj_mat,
-    )
-
-    qec_defects = inputs["lstm_input"]  # [shots, qec_cycle, anc_qubit]
-    final_defects = inputs["eval_input"]  # [shots, stab]
-
-    qec_defects = qec_defects.reshape(
-        qec_defects.shape[0],
-        qec_defects.shape[1] * qec_defects.shape[2],
-    )
-    inputs = np.concatenate([qec_defects, final_defects], axis=1)
 
     return inputs, outputs
