@@ -2,13 +2,13 @@
 
 username="bmvarbanov"
 dataset="20230214-d3_rot-surf_circ-level_p0.001"
-run="20230222-161627_units64_p0.001_eval-dropout0.2_l2null_lr0.001_extended-val_aux-weight0.8"
+run="20230222-000215_units64_p0.001_eval-dropout0.2_l2null_lr0.001_extended-val_max-train-rounds40"
 from_scrath=true
 
 
 if $from_scrath;
 then
-    host="login.delftblue.tudelft.nl"
+    host="delftblue"
     data_dir="/scratch/${username}"
 else
     host="linux-bastion.tudelft.nl"

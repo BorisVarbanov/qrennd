@@ -7,17 +7,21 @@ dataset:
   train:
     shots: 200000
     rounds: !range [1, 20, 2]
-    states: [0, 1]
+    states: ["000000000", "111111111"]
 
   dev:
     shots: 20000
     rounds: !range [1, 20, 2]
-    states: [0, 1]
+    states: ["000000000", "111111111"]
+
+  test:
+    shots: 20000
+    rounds: !range [1, 20, 2]
+    states: ["000000000", "111111111"]
 
   rot_basis: false
-  lstm_input: "defects"
-  eval_input: "defects"
-  folder_format_name: "surf-code_d3_b{rot_basis}_s{state}_n{shots}_r{num_rounds}"
+  folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
+  input: "defects"
 
 train:
   optimizer:
