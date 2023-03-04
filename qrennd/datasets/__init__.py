@@ -1,13 +1,11 @@
 from . import preprocessing
-from .generators import dataset_genereator
-from .util import load_datasets
+from .generators import dataset_generator
 from .sequences import RaggedSequence
-
+from .util import load_datasets
 
 __all__ = [
     "RaggedSequence",
-    "dataset_genereator",
+    "dataset_generator",
     "load_datasets",
-    "load_datasets_google",
     "preprocessing",
 ]
