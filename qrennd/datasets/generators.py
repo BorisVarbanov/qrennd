@@ -3,7 +3,7 @@ from typing import Generator, List
 import xarray as xr
 
 
-def dataset_genereator(
+def dataset_generator(
     datasets_dir: str,
     experiment_name: str,
     basis: str,
@@ -12,7 +12,6 @@ def dataset_genereator(
     rounds: List[int],
 ) -> Generator:
     for num_rounds in rounds:
-        _datasets = []
         for state in states:
             experiment = experiment_name.format(
                 basis=basis,
@@ -24,7 +23,5 @@ def dataset_genereator(
                 dataset = xr.open_dataset(datasets_dir / experiment / "measurements.nc")
             except FileNotFoundError as error:
                 raise ValueError("Invalid experiment data directory") from error
-            _datasets.append(dataset)
 
-        dataset = xr.concat(_datasets, dim="init")
-        yield dataset
+            yield dataset

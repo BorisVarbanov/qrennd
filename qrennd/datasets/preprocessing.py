@@ -31,60 +31,163 @@ def get_final_defects(syndromes: DataArray, proj_syndrome: DataArray) -> DataArr
     return defects
 
 
-def preprocess_data(
+def preprocess_data_to_measurements(
     dataset: Dataset,
-    lstm_input: str,
-    eval_input: str,
-    proj_mat: Optional[DataArray] = None,
 ):
+    """
+    Preprocess dataset to generate measurement inputs
+    and the logical errors.
+
+    Parameters
+    ----------
+    dataset
+        Assumes to have the following variables and dimensions:
+        - anc_meas: [shots, qec_cycle, anc_qubit]
+        - ideal_anc_meas: [qec_cycle, anc_qubit]
+        - data_meas: [shot, data_qubit]
+        - idea_data_meas: [data_qubit]
+    """
     anc_meas = dataset.anc_meas
     data_meas = dataset.data_meas
-
     ideal_anc_meas = dataset.ideal_anc_meas
     ideal_data_meas = dataset.ideal_data_meas
 
-    if lstm_input == "measurements":
-        lstm_inputs = anc_meas
-    elif lstm_input == "syndromes":
-        anc_flips = anc_meas ^ ideal_anc_meas
-        lstm_inputs = get_syndromes(anc_flips)
-    elif lstm_input == "defects":
-        anc_flips = anc_meas ^ ideal_anc_meas
-        syndromes = get_syndromes(anc_flips)
-        lstm_inputs = get_defects(syndromes)
-    else:
-        raise ValueError(
-            f"Unknown input data type {lstm_input}, the possible "
-            "options are 'measurements', 'syndromes' and 'defects'."
-        )
-    lstm_inputs = lstm_inputs.stack(run=["init", "shot"])
-    lstm_inputs = lstm_inputs.transpose("run", "qec_round", "anc_qubit")
+    lstm_inputs = anc_meas
 
-    if eval_input == "measurements":
-        eval_inputs = dataset.data_meas
-    elif eval_input == "syndromes":
-        data_flips = data_meas ^ ideal_data_meas
-        eval_inputs = (data_meas @ proj_mat) % 2
-    elif eval_input == "defects":
-        data_flips = data_meas ^ ideal_data_meas
-        proj_syndrome = (data_flips @ proj_mat) % 2
-        eval_inputs = get_final_defects(syndromes, proj_syndrome)
-    else:
-        raise ValueError(
-            f"Unknown input data type {lstm_input}, the possible "
-            "options are 'measurements', 'defects'."
-        )
-    eval_inputs = eval_inputs.stack(run=["init", "shot"])
-    eval_inputs = eval_inputs.transpose("run", ...)
+    eval_inputs = dataset.data_meas
 
     data_errors = data_meas ^ ideal_data_meas
     log_errors = data_errors.sum(dim="data_qubit") % 2
-    log_errors = log_errors.stack(run=["init", "shot"])
 
     inputs = dict(
         lstm_input=lstm_inputs.values.astype(bool),
         eval_input=eval_inputs.values.astype(bool),
     )
     outputs = log_errors.values.astype(bool)
+
+    return inputs, outputs
+
+
+def preprocess_data_to_syndromes(
+    dataset: Dataset,
+    proj_mat: DataArray,
+):
+    """
+    Preprocess dataset to generate syndrome inputs
+    and the logical errors.
+
+    Parameters
+    ----------
+    dataset
+        Assumes to have the following variables and dimensions:
+        - anc_meas: [shots, qec_cycle, anc_qubit]
+        - ideal_anc_meas: [qec_cycle, anc_qubit]
+        - data_meas: [shot, data_qubit]
+        - idea_data_meas: [data_qubit]
+    proj_mat
+        Assumes to have dimensions [data_qubits, stab],
+        where stab correspond to the final stabilizers.
+    """
+    anc_meas = dataset.anc_meas
+    data_meas = dataset.data_meas
+    ideal_anc_meas = dataset.ideal_anc_meas
+    ideal_data_meas = dataset.ideal_data_meas
+
+    anc_flips = anc_meas ^ ideal_anc_meas
+    lstm_inputs = get_syndromes(anc_flips)
+
+    data_flips = data_meas ^ ideal_data_meas
+    eval_inputs = (data_meas @ proj_mat) % 2
+
+    data_errors = data_meas ^ ideal_data_meas
+    log_errors = data_errors.sum(dim="data_qubit") % 2
+
+    inputs = dict(
+        lstm_input=lstm_inputs.values.astype(bool),
+        eval_input=eval_inputs.values.astype(bool),
+    )
+    outputs = log_errors.values.astype(bool)
+
+    return inputs, outputs
+
+
+def preprocess_data_to_defects(
+    dataset: Dataset,
+    proj_mat: DataArray,
+):
+    """
+    Preprocess dataset to generate defect inputs
+    and the logical errors.
+
+    Parameters
+    ----------
+    dataset
+        Assumes to have the following variables and dimensions:
+        - anc_meas: [shots, qec_cycle, anc_qubit]
+        - ideal_anc_meas: [qec_cycle, anc_qubit]
+        - data_meas: [shot, data_qubit]
+        - idea_data_meas: [data_qubit]
+    proj_mat
+        Assumes to have dimensions [data_qubits, stab],
+        where stab correspond to the final stabilizers.
+    """
+    anc_meas = dataset.anc_meas
+    data_meas = dataset.data_meas
+    ideal_anc_meas = dataset.ideal_anc_meas
+    ideal_data_meas = dataset.ideal_data_meas
+
+    anc_flips = anc_meas ^ ideal_anc_meas
+    syndromes = get_syndromes(anc_flips)
+    lstm_inputs = get_defects(syndromes)
+
+    data_flips = data_meas ^ ideal_data_meas
+    proj_syndrome = (data_flips @ proj_mat) % 2
+    eval_inputs = get_final_defects(syndromes, proj_syndrome)
+
+    data_errors = data_meas ^ ideal_data_meas
+    log_errors = data_errors.sum(dim="data_qubit") % 2
+
+    inputs = dict(
+        lstm_input=lstm_inputs.values.astype(bool),
+        eval_input=eval_inputs.values.astype(bool),
+    )
+    outputs = log_errors.values.astype(bool)
+
+    return inputs, outputs
+
+
+def preprocess_data_for_MWPM(
+    dataset: Dataset,
+    proj_mat: DataArray,
+):
+    """
+    Preprocess dataset to generate defect inputs for MWPM
+    and the logical errors.
+
+    Parameters
+    ----------
+    dataset
+        Assumes to have the following variables and dimensions:
+        - anc_meas: [shots, qec_cycle, anc_qubit]
+        - ideal_anc_meas: [qec_cycle, anc_qubit]
+        - data_meas: [shot, data_qubit]
+        - idea_data_meas: [data_qubit]
+    proj_mat
+        Assumes to have dimensions [data_qubits, stab],
+        where stab correspond to the final stabilizers.
+    """
+    inputs, outputs = preprocess_data_to_defects(
+        dataset=dataset,
+        proj_mat=proj_mat,
+    )
+
+    qec_defects = inputs["lstm_input"]  # [shots, qec_cycle, anc_qubit]
+    final_defects = inputs["eval_input"]  # [shots, stab]
+
+    qec_defects = qec_defects.reshape(
+        qec_defects.shape[0],
+        qec_defects.shape[1] * qec_defects.shape[2],
+    )
+    inputs = np.concatenate([qec_defects, final_defects], axis=1)
 
     return inputs, outputs
