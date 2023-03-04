@@ -1,0 +1,65 @@
+metadata:
+  experiment: 20230302-d3_rot-surf_simulated_google_20M
+  run: google_simulated_eval-dr0-05
+  prev_run: null
+
+dataset:
+  train:
+    shots: 155000
+    rounds: !range [1, 26, 2]
+    states: ["000010110", "001101110", "001110000", "010100111", "011000110", "100111001", "101011000", "110001111", "110010001", "111101001"]
+
+  dev:
+    shots: 5000
+    rounds: !range [1, 26, 2]  
+    states: ["000010110", "001101110", "001110000", "010100111", "011000110", "100111001", "101011000", "110001111", "110010001", "111101001"]
+
+  test:
+    shots: 5000
+    rounds: !range [1, 26, 2]  
+    states: ["000010110", "001101110", "001110000", "010100111", "011000110", "100111001", "101011000", "110001111", "110010001", "111101001"]
+
+  test_experimental:
+    shots: 5000
+    rounds: !range [1, 26, 2]  
+    states: ["000010110", "001101110", "001110000", "010100111", "011000110", "100111001", "101011000", "110001111", "110010001", "111101001"]
+
+  rot_basis: false
+  input: "defects"
+  folder_format_name: "surface_code_b{basis}_d3_r{num_rounds:02d}_center_3_5_s{state}_n{shots}"
+
+train:
+  optimizer:
+    learning_rate: 0.0005
+  loss:
+    main_output: binary_crossentropy
+    aux_output: binary_crossentropy
+  loss_weights:
+    main_output: 1.0
+    aux_output: 0.5
+  metrics:
+    main_output: accuracy
+    aux_output: accuracy
+  callbacks:
+    early_stop:
+      monitor: val_loss
+      mode: min
+      min_delta: 0
+      patience: 10
+    csv_log:
+      append: false
+    checkpoint:
+      monitor: val_loss
+      mode: min
+      save_best_only: true
+
+  epochs: 500
+  batch_size: 64
+
+model:
+  LSTM_units: [64, 64]
+  LSTM_dropout_rates: [null, null]
+  eval_units: 64
+  eval_dropout_rate: 0.05
+  output_units: 1
+  l2_factor: null

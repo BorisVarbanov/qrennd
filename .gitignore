@@ -145,3 +145,31 @@ dmypy.json
 
 # DS_Store
 .DS_Store
+
+# Jupyter notebooks (only .py files are committed, sync carried out by jupytext)
+*.ipynb
+
+# Decoder weights
+*.hdf5
+
+# Stim files
+*.stim
+*.dem
+
+# Tensorboard logs
+events.out.tfevents*
+
+# Tensorflow profiler outputs
+*.xplane.pb
+*.kernel_states.pb
+*.trace.json.gz
+*.tensorflow_stats.pb
+*.overview_page.pb
+*.memory_profile.json.gz
+*.kernel_stats.pb
+*.input_pipeline.pb
+
+# Outputs from cluster or saved parametrs
+*.err
+*.out
+*.txt
