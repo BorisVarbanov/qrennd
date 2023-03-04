@@ -1,5 +1,6 @@
 from typing import Optional
 
+import numpy as np
 from xarray import DataArray, Dataset
 
 
@@ -31,7 +32,7 @@ def get_final_defects(syndromes: DataArray, proj_syndrome: DataArray) -> DataArr
     return defects
 
 
-def preprocess_data_to_measurements(
+def to_measurements(
     dataset: Dataset,
 ):
     """
@@ -47,17 +48,11 @@ def preprocess_data_to_measurements(
         - data_meas: [shot, data_qubit]
         - idea_data_meas: [data_qubit]
     """
-    anc_meas = dataset.anc_meas
-    data_meas = dataset.data_meas
-    ideal_anc_meas = dataset.ideal_anc_meas
-    ideal_data_meas = dataset.ideal_data_meas
-
-    lstm_inputs = anc_meas
-
+    lstm_inputs = dataset.anc_meas
     eval_inputs = dataset.data_meas
 
-    data_errors = data_meas ^ ideal_data_meas
-    log_errors = data_errors.sum(dim="data_qubit") % 2
+    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
+    log_errors = data_flips.sum(dim="data_qubit") % 2
 
     inputs = dict(
         lstm_input=lstm_inputs.values.astype(bool),
@@ -68,7 +63,7 @@ def preprocess_data_to_measurements(
     return inputs, outputs
 
 
-def preprocess_data_to_syndromes(
+def to_syndromes(
     dataset: Dataset,
     proj_mat: DataArray,
 ):
@@ -88,19 +83,13 @@ def preprocess_data_to_syndromes(
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     """
-    anc_meas = dataset.anc_meas
-    data_meas = dataset.data_meas
-    ideal_anc_meas = dataset.ideal_anc_meas
-    ideal_data_meas = dataset.ideal_data_meas
-
-    anc_flips = anc_meas ^ ideal_anc_meas
+    anc_flips = dataset.anc_meas ^ dataset.ideal_anc_meas
     lstm_inputs = get_syndromes(anc_flips)
 
-    data_flips = data_meas ^ ideal_data_meas
-    eval_inputs = (data_meas @ proj_mat) % 2
+    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
+    eval_inputs = (data_flips @ proj_mat) % 2
 
-    data_errors = data_meas ^ ideal_data_meas
-    log_errors = data_errors.sum(dim="data_qubit") % 2
+    log_errors = data_flips.sum(dim="data_qubit") % 2
 
     inputs = dict(
         lstm_input=lstm_inputs.values.astype(bool),
@@ -111,7 +100,7 @@ def preprocess_data_to_syndromes(
     return inputs, outputs
 
 
-def preprocess_data_to_defects(
+def to_defects(
     dataset: Dataset,
     proj_mat: DataArray,
 ):
@@ -131,21 +120,15 @@ def preprocess_data_to_defects(
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     """
-    anc_meas = dataset.anc_meas
-    data_meas = dataset.data_meas
-    ideal_anc_meas = dataset.ideal_anc_meas
-    ideal_data_meas = dataset.ideal_data_meas
-
-    anc_flips = anc_meas ^ ideal_anc_meas
+    anc_flips = dataset.anc_meas ^ dataset.ideal_anc_meas
     syndromes = get_syndromes(anc_flips)
     lstm_inputs = get_defects(syndromes)
 
-    data_flips = data_meas ^ ideal_data_meas
+    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     proj_syndrome = (data_flips @ proj_mat) % 2
     eval_inputs = get_final_defects(syndromes, proj_syndrome)
 
-    data_errors = data_meas ^ ideal_data_meas
-    log_errors = data_errors.sum(dim="data_qubit") % 2
+    log_errors = data_flips.sum(dim="data_qubit") % 2
 
     inputs = dict(
         lstm_input=lstm_inputs.values.astype(bool),
@@ -176,7 +159,7 @@ def preprocess_data_for_MWPM(
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     """
-    inputs, outputs = preprocess_data_to_defects(
+    inputs, outputs = to_defects(
         dataset=dataset,
         proj_mat=proj_mat,
     )
