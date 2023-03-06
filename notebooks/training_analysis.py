@@ -5,20 +5,32 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "training_logs"
-MODEL_FOLDER: str = "20230208-153752-base_training_4M"
+EXP_NAME = "20230302-d3_rot-surf_simulated_google_20M"
+MODEL_FOLDER = "20230305-112822_google_simulated_d3_20M_dr0-05"
+LAYOUT_NAME = "d3_rotated_layout.yaml"
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
 
-# experiment folder
-EXP_DIR = NOTEBOOK_DIR / "data" / EXP_NAME
-if not EXP_DIR.exists():
-    raise ValueError("Experiment directory does not exist.")
+DATA_DIR = NOTEBOOK_DIR / "data"
+if not DATA_DIR.exists():
+    raise ValueError(f"Data directory does not exist: {DATA_DIR}")
 
-LOG_FILE = EXP_DIR / f"{MODEL_FOLDER}/logs/training.log"
+OUTPUT_DIR = NOTEBOOK_DIR / "output"
+if not OUTPUT_DIR.exists():
+    raise ValueError(f"Output directory does not exist: {OUTPUT_DIR}")
+
+LOG_FILE = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER / "logs/training.log"
 if not LOG_FILE.exists():
-    raise ValueError(f"Log file does not exist: {MODEL_FOLDER}/logs/training.log")
+    raise ValueError(f"Log file does not exist: {LOG_FILE}")
+
+CONFIG_FILE = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER / "config.yaml"
+if not CONFIG_FILE.exists():
+    raise ValueError(f"Config file does not exist: {CONFIG_FILE}")
+
+LAYOUT_FILE = DATA_DIR / EXP_NAME / f"config/{LAYOUT_NAME}"
+if not LAYOUT_FILE.exists():
+    raise ValueError(f"Layout file does not exist: {LAYOUT_FILE}")
 
 # %%
 dataframe = pd.read_csv(LOG_FILE)
@@ -79,109 +91,80 @@ plt.show()
 
 # %%
 import xarray as xr
+import copy
 from qrennd import get_model, Config
-from qrennd.utils.syndrome import get_syndromes, get_defects
 from qrennd.utils.analysis import (
     logical_fidelity,
     LogicalFidelityDecay,
     lmfit_par_to_ufloat,
 )
-from qrennd.utils.dataset_generator import DataGenerator
-from qrennd.layouts.layout import Layout
+from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
 
 
 # %%
-def evaluate_model(
-    model,
-    EXP_DIR,
-    proj_matrix,
-    DATA_INPUT="defects",
-    FINAL_DATA_INPUT="defects",
-    QEC_CYCLES=list(range(1, 40)),
-    LOG_STATES=[0, 1],
-    N_SHOTS=20_000,
-):
-    LOG_FID = np.zeros((len(QEC_CYCLES), len(LOG_STATES)))
-    for r_idx, r in enumerate(QEC_CYCLES):
-        print(r)
-        for l_idx, log_state in enumerate(LOG_STATES):
-            test_generator = DataGenerator(
-                folder=EXP_DIR / "test",
-                num_shots=N_SHOTS,
-                states=[log_state],
-                qec_rounds=[r],
-                batch_size=N_SHOTS,
-                data_input=DATA_INPUT,
-                data_final_input=FINAL_DATA_INPUT,
-                proj_matrix=proj_matrix,
-            )
-            assert len(test_generator) == 1
-            test_input, test_output = test_generator[0]
-            eval_output = model.predict(x=test_input)
-            p1, p2 = eval_output
-            out = p1 > 0.5
-            out = out.flatten()
-            error_prob = np.average(out ^ test_output)
-            LOG_FID[r_idx, l_idx] = 1 - error_prob
+def evaluate_model(model, config, layout, dataset_name="test"):
+    callbacks = get_callbacks(config)
+    outputs = {}
+    for rounds in config.dataset[dataset_name]["rounds"]:
+        print("QEC round = ", rounds, end="\r")
+        config_ = copy.deepcopy(config)
+        config_.dataset[dataset_name]["rounds"] = [rounds]
+        config_.train["batch_size"] = config_.dataset[dataset_name]["shots"]
+        test_data = load_datasets(
+            config=config_, layout=layout, dataset_name=dataset_name
+        )
 
-    fid_arr = xr.DataArray(
-        LOG_FID,
-        dims=["qec_round", "log_state"],
-        coords=dict(log_state=LOG_STATES, qec_round=list(QEC_CYCLES)),
-    )
-    log_fid = fid_arr.mean(dim="log_state")
-    log_fid = log_fid.to_dataset(name="log_fid")
+        output = model.evaluate(
+            test_data,
+            callbacks=callbacks,
+            verbose=0,
+            return_dict=True,
+        )
+        outputs[rounds] = output
+
+    # convert to xr.DataArray
+    rounds, log_fid = np.array(
+        [
+            [rounds, metrics["main_output_accuracy"]]
+            for rounds, metrics in outputs.items()
+        ]
+    ).T
+
+    log_fid = xr.DataArray(data=log_fid, coords=dict(qec_round=rounds), name="log_fid")
 
     return log_fid
 
 
-def load_setup(SETUP):
-    setup_dict = {}
-
-    with open(SETUP, "r") as file:
-        setup = file.read()
-
-    setup = setup.split("\n")
-    for line in setup:
-        if "CONFIG = Config(" in line:
-            config = eval(line[len("CONFIG = ") :])
-            setup_dict["config"] = config
-        if "DATA_FINAL_INPUT" in line:
-            setup_dict["final_data_input"] = line[len("DATA_FINAL_INPUT = ") :]
-
-    return setup_dict
-
+# %%
+layout = Layout.from_yaml(LAYOUT_FILE)
+config = Config.from_yaml(
+    filepath=CONFIG_FILE,
+    data_dir=DATA_DIR,
+    output_dir=OUTPUT_DIR,
+)
 
 # %%
-SETUP = EXP_DIR / f"{MODEL_FOLDER}/logs/setup.txt"
-if not SETUP.exists():
-    raise ValueError(f"Setup file does not exist: {SETUP}")
-LAYOUT = EXP_DIR / "config" / "d3_rotated_layout.yaml"
-if not LAYOUT.exists():
-    raise ValueError(f"Layout does not exist: {LAYOUT}")
+seq_size = len(layout.get_qubits(role="anc"))
 
-# %%
-setup = load_setup(SETUP)
-layout = Layout.from_yaml(LAYOUT)
-proj_matrix = layout.projection_matrix(stab_type="z_type")
+if config.dataset["input"] == "measurements":
+    vec_size = len(layout.get_qubits(role="data"))
+else:
+    vec_size = int(0.5 * seq_size)
+
+model = get_model(
+    seq_size=seq_size,
+    vec_size=vec_size,
+    config=config,
+)
 
 # %%
 # if results have not been stored, evaluate model
-DIR = EXP_DIR / f"{MODEL_FOLDER}"
+DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
 if not (DIR / "test_results.nc").exists():
     print("Evaluating model...")
 
-    num_rounds = None
-    num_anc = 8
-    num_data = 4 if setup["final_data_input"] == "defects" else 9
-    model = get_model(
-        defects_shape=(num_rounds, num_anc),
-        final_defects_shape=(num_data,),
-        config=setup["config"],
-        metrics={},
-    )
     model.load_weights(DIR / "checkpoint/weights.hdf5")
-    log_fid = evaluate_model(model, EXP_DIR, proj_matrix=proj_matrix)
+    log_fid = evaluate_model(model, config, layout, "test")
     log_fid.to_netcdf(path=DIR / "test_results.nc")
 
 log_fid = xr.load_dataset(DIR / "test_results.nc")
