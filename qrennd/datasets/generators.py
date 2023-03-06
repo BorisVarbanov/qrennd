@@ -10,6 +10,7 @@ def dataset_generator(
     shots: int,
     states: List[str],
     rounds: List[int],
+    **args,
 ) -> Generator:
     for num_rounds in rounds:
         for state in states:
@@ -18,6 +19,7 @@ def dataset_generator(
                 state=state,
                 shots=shots,
                 num_rounds=num_rounds,
+                **args,
             )
             try:
                 dataset = xr.open_dataset(datasets_dir / experiment / "measurements.nc")
