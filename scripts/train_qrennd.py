@@ -27,7 +27,6 @@ CONFIG_DIR = SCRIPT_DIR / "configs"
 
 # %%
 # Load setup objects
-
 layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
 config = Config.from_yaml(
     filepath=CONFIG_DIR / CONFIG_FILE,
@@ -66,6 +65,8 @@ model = get_model(
 # %%
 callbacks = get_callbacks(config)
 
+# %%
+config.to_yaml(config.run_dir / "config.yaml")
 
 # %%
 history = model.fit(
@@ -80,6 +81,5 @@ history = model.fit(
 
 # %%
 model.save(config.checkpoint_dir / "final_weights.hdf5")
-config.to_yaml(config.run_dir / "config.yaml")
 
 # %%
