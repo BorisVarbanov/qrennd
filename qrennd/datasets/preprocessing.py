@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Optional, List
 
-from xarray import DataArray, Dataset
+from xarray import DataArray, Dataset, dot
 
 
 def get_syndromes(anc_meas: DataArray) -> DataArray:
@@ -47,19 +47,13 @@ def to_measurements(
         - data_meas: [shot, data_qubit]
         - idea_data_meas: [data_qubit]
     """
-    lstm_inputs = dataset.anc_meas
-    eval_inputs = dataset.data_meas
+    anc_meas = dataset.anc_meas
+    data_meas = dataset.data_meas
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
-    inputs = dict(
-        lstm_input=lstm_inputs.values.astype(bool),
-        eval_input=eval_inputs.values.astype(bool),
-    )
-    outputs = log_errors.values.astype(bool)
-
-    return inputs, outputs
+    return anc_meas, data_meas, log_errors
 
 
 def to_syndromes(
@@ -83,20 +77,14 @@ def to_syndromes(
         where stab correspond to the final stabilizers.
     """
     anc_flips = dataset.anc_meas ^ dataset.ideal_anc_meas
-    lstm_inputs = get_syndromes(anc_flips)
+    syndromes = get_syndromes(anc_flips)
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
-    eval_inputs = (data_flips @ proj_mat) % 2
+    final_syndromes = (data_flips @ proj_mat) % 2
 
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
-    inputs = dict(
-        lstm_input=lstm_inputs.values.astype(bool),
-        eval_input=eval_inputs.values.astype(bool),
-    )
-    outputs = log_errors.values.astype(bool)
-
-    return inputs, outputs
+    return syndromes, final_syndromes, log_errors
 
 
 def to_defects(
@@ -121,14 +109,22 @@ def to_defects(
     """
     anc_flips = dataset.anc_meas ^ dataset.ideal_anc_meas
     syndromes = get_syndromes(anc_flips)
-    lstm_inputs = get_defects(syndromes)
+    defects = get_defects(syndromes)
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     proj_syndrome = (data_flips @ proj_mat) % 2
-    eval_inputs = get_final_defects(syndromes, proj_syndrome)
+    final_defects = get_final_defects(syndromes, proj_syndrome)
 
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
+    return defects, final_defects, log_errors
+
+
+def to_model_input(
+    lstm_inputs: DataArray,
+    eval_inputs: DataArray,
+    log_errors: DataArray,
+):
     inputs = dict(
         lstm_input=lstm_inputs.values.astype(bool),
         eval_input=eval_inputs.values.astype(bool),

@@ -1,5 +1,5 @@
 metadata:
-  experiment: 20230131-d3_rot-surf_circ-level_large-dataset
+  experiment: 20230306-d3_rot-surf_biased-noise
   run: example-train
   prev_run: null
 
@@ -15,7 +15,7 @@ dataset:
     states: ["000000000", "111111111"]
 
   test:
-    shots: 20000
+    shots: 5000
     rounds: !range [1, 20, 2]
     states: ["000000000", "111111111"]
 

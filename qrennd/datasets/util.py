@@ -3,7 +3,12 @@ import xarray as xr
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
-from .preprocessing import to_defects, to_measurements, to_syndromes
+from .preprocessing import (
+    to_defects,
+    to_measurements,
+    to_syndromes,
+    to_model_input,
+)
 from .sequences import RaggedSequence
 
 
@@ -23,29 +28,40 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     )
     proj_matrix = layout.projection_matrix(stab_type)
 
+    # Convert to desired input
+    input_type = config.dataset["input"]
+    if input_type == "measurements":
+        dataset_gen = (to_measurements(dataset) for dataset in dataset_gen)
+    elif input_type == "syndromes":
+        dataset_gen = (to_syndromes(dataset, proj_matrix) for dataset in dataset_gen)
+    elif input_type == "defects":
+        dataset_gen = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
+    else:
+        raise ValueError(
+            f"Unknown input data type {input_type}, the possible "
+            "options are 'measurements', 'syndromes', 'defects' and 'MWPM'."
+        )
+
+    # Reshape if necessary
     if "ConvLSTM_units" in config.model:
         expansion_matrix = layout.expansion_matrix()
         dataset_gen = (
-            xr.dot(dataset, expansion_matrix, dims=["anc_qubit"])
-            for dataset in dataset_gen
+            [
+                xr.dot(lstm_inputs, expansion_matrix, dims=["anc_qubit"]),
+                eval_inputs,
+                log_errors,
+            ]
+            for lstm_inputs, eval_inputs, log_errors in dataset_gen
         )
     elif "LSTM_units" in config.model:
         pass
     else:
         raise ValueError("Config.model must contain 'ConvLSTM_units' or 'LSTM_units'")
 
-    input_type = config.dataset["input"]
-
-    if input_type == "measurements":
-        generator = (to_measurements(dataset) for dataset in dataset_gen)
-    elif input_type == "syndromes":
-        generator = (to_syndromes(dataset, proj_matrix) for dataset in dataset_gen)
-    elif input_type == "defects":
-        generator = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
-    else:
-        raise ValueError(
-            f"Unknown input data type {input_type}, the possible "
-            "options are 'measurements', 'syndromes', 'defects' and 'MWPM'."
-        )
+    # Process for keras.model input
+    generator = (
+        to_model_input(lstm_inputs, eval_inputs, log_errors)
+        for lstm_inputs, eval_inputs, log_errors in dataset_gen
+    )
 
     return RaggedSequence.from_generator(generator, batch_size)
