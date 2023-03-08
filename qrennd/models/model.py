@@ -59,7 +59,7 @@ def get_model(
     """
     # Recurrent layers
     if "LSTM_units" in config.model:
-        lstm_input = keras.layers.Input(
+        input_var = keras.layers.Input(
             shape=(None, seq_size),
             dtype="float32",
             name="lstm_input",
@@ -67,21 +67,21 @@ def get_model(
         lstm_units = config.model["LSTM_units"]
         dropout_rates = config.model.get("LSTM_dropout_rates")
         output = LSTM_layers(
-            lstm_input=lstm_input,
+            lstm_input=input_var,
             lstm_units=lstm_units,
             dropout_rates=dropout_rates,
         )
     elif "ConvLSTM_units" in config.model:
-        convlstm_input = keras.layers.Input(
+        input_var = keras.layers.Input(
             shape=(None, *seq_size),
             dtype="float32",
-            name="convlstm_input",
+            name="lstm_input",  # naming convention in dataset_generator
         )
         convlstm_units = config.model["ConvLSTM_units"]
         convlstm_kernels = config.model["ConvLSTM_kernels"]
         dropout_rates = config.model.get("ConvLSTM_dropout_rates")
         output = ConvLSTM_layers(
-            convlstm_input=convlstm_input,
+            convlstm_input=input_var,
             convlstm_units=convlstm_units,
             convlstm_kernels=convlstm_kernels,
             dropout_rates=dropout_rates,
@@ -122,7 +122,7 @@ def get_model(
 
     # Compile model
     model = keras.Model(
-        inputs=[lstm_input, eval_input],
+        inputs=[input_var, eval_input],
         outputs=[main_output, aux_output],
         name=name or "decoder_model",
     )
@@ -224,7 +224,7 @@ def ConvLSTM_layers(
             f"Mismatch between the number of ConvLSTM layers ({num_layers})"
             "and the number of ConvLSTM dropout rate after each layer."
         )
-    if len(kernel_sizes) != num_layers:
+    if len(convlstm_kernels) != num_layers:
         raise ValueError(
             f"Mismatch between the number of ConvLSTM layers ({num_layers})"
             "and the number of ConvLSTM kernel sizes."
@@ -232,10 +232,14 @@ def ConvLSTM_layers(
     inds = range(1, num_layers + 1)
 
     output = None
-    for ind, units, rate in zip(inds, convlstm_units, dropout_rates):
+    for ind, units, rate, kernel_size in zip(
+        inds, convlstm_units, dropout_rates, convlstm_kernels
+    ):
         return_sequences = ind != num_layers
         convlstm_layer = keras.layers.ConvLSTM2D(
             filters=units,
+            kernel_size=kernel_size,
+            data_format="channels_first",
             return_sequences=return_sequences,
             name=f"ConvLSTM_{ind}",
         )
@@ -259,7 +263,7 @@ def ConvLSTM_layers(
 
     # reshape from [shots, filters, rows, cols] into [shots, dim].
     # Reshape layer includes [shots] dimension
-    reshape_layer = keras.layers.Reshape(np.product(output.shape[1:]))
+    reshape_layer = keras.layers.Reshape((np.product(output.shape[1:]),))
     output = reshape_layer(output)
 
     return output
