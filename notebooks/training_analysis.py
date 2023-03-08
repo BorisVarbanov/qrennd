@@ -5,8 +5,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230302-d3_rot-surf_simulated_google_20M"
-MODEL_FOLDER = "20230305-112822_google_simulated_d3_20M_dr0-05"
+EXP_NAME = "20230306-d3_rot-surf_biased-noise"
+MODEL_FOLDER = "20230211-094701-base_training_4M_dr-eval-lstm2-01"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 
 # %%
@@ -170,70 +170,18 @@ if not (DIR / "test_results.nc").exists():
 log_fid = xr.load_dataset(DIR / "test_results.nc")
 
 # %%
-MPWM_log_fid = np.array(
-    [
-        0.96275,
-        0.9199,
-        0.88245,
-        0.84325,
-        0.81565,
-        0.78715,
-        0.7602,
-        0.7285,
-        0.70985,
-        0.6915,
-        0.6706,
-        0.65755,
-        0.64445,
-        0.62755,
-        0.62095,
-        0.6042,
-        0.5971,
-        0.5835,
-        0.5842,
-        0.56485,
-        0.5673,
-        0.56225,
-        0.5579,
-        0.54265,
-        0.53465,
-        0.5373,
-        0.542,
-        0.5274,
-        0.52815,
-        0.533,
-        0.52485,
-        0.52125,
-        0.5295,
-        0.5174,
-        0.5197,
-        0.51355,
-        0.51115,
-        0.51,
-        0.5112,
-        0.5111,
-        0.5084,
-        0.51125,
-        0.50955,
-        0.50385,
-        0.505,
-        0.5107,
-        0.50995,
-        0.5012,
-        0.5022,
-        0.50445,
-        0.50205,
-        0.50035,
-        0.50045,
-        0.49915,
-        0.5033,
-        0.5029,
-        0.50055,
-        0.4986,
-        0.50015,
-    ]
-)
-MWPM_qec_round = np.arange(1, 60)
+MWPM_data = OUTPUT_DIR / EXP_NAME / "MWPM" / "test_results.nc"
+if not MWPM_data.exists():
+    raise TypeError(
+        (
+            f"File not found: {MWPM_data}\n"
+            "Run 'MWPM_analysis.py' to generate MWPM data"
+        )
+    )
+
+MWPM_data = xr.load_dataset(MWPM_data)
+MPWM_log_fid = MWPM_data.log_fid.values
+MWPM_qec_round = MWPM_data.qec_round.values
 
 # %%
 model_decay = LogicalFidelityDecay()
@@ -243,7 +191,7 @@ out = model_decay.fit(
 )
 error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
 
-MAX_QEC = min(len(log_fid.log_fid), 60)
+MAX_QEC = int(min(np.max(log_fid.qec_round.values), np.max(MWPM_qec_round)))
 
 ax = out.plot_fit()
 ax.plot(
@@ -263,5 +211,6 @@ ax.set_xlim(0, MAX_QEC + 0.5)
 ax.plot([], [], " ", label=f"$\\epsilon_L = {error_rate.nominal_value:.4f}$")
 ax.legend()
 ax.grid(which="major")
+plt.show()
 
 # %%
