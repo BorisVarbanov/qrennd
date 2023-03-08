@@ -6,7 +6,8 @@ import random
 import numpy as np
 import tensorflow as tf
 
-from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
+from qrennd import Config, get_callbacks, get_model, load_datasets
+from qec_util.layouts import Layout, set_coords
 
 # %%
 # Parameters
@@ -28,6 +29,7 @@ CONFIG_DIR = SCRIPT_DIR / "configs"
 # %%
 # Load setup objects
 layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
+set_coords(layout)
 config = Config.from_yaml(
     filepath=CONFIG_DIR / CONFIG_FILE,
     data_dir=DATA_DIR,
@@ -49,12 +51,16 @@ train_data = load_datasets(config=config, layout=layout, dataset_name="train")
 val_data = load_datasets(config=config, layout=layout, dataset_name="dev")
 
 # %%
-seq_size = len(layout.get_qubits(role="anc"))
+if "ConvLSTM_units" in config.model:
+    seq_size = layout.expansion_matrix().shape[1:]
+else:
+    seq_size = len(layout.get_qubits(role="anc"))
 
 if config.dataset["input"] == "measurements":
     vec_size = len(layout.get_qubits(role="data"))
 else:
-    vec_size = int(0.5 * seq_size)
+    vec_size = len(layout.get_qubits(role="anc")) // 2
+
 
 model = get_model(
     seq_size=seq_size,
