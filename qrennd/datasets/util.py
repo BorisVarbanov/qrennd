@@ -1,3 +1,5 @@
+import xarray as xr
+
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
@@ -20,6 +22,19 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         dataset_dir, experiment_name, basis, **dataset_params
     )
     proj_matrix = layout.projection_matrix(stab_type)
+
+    if "ConvLSTM_units" in config.model:
+        expansion_matrix = layout.expansion_matrix()
+        dataset_gen = (
+            xr.dot(dataset, expansion_matrix, dims=["anc_qubit"])
+            for dataset in dataset_gen
+        )
+    elif "LSTM_units" in config.model:
+        pass
+    else:
+        raise ValueError(
+            "Config must contain 'ConvLSTM_units' or 'LSTM_units' in section 'model'"
+        )
 
     input_type = config.dataset["input"]
 
