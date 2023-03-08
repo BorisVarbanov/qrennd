@@ -32,9 +32,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     elif "LSTM_units" in config.model:
         pass
     else:
-        raise ValueError(
-            "Config must contain 'ConvLSTM_units' or 'LSTM_units' in section 'model'"
-        )
+        raise ValueError("Config.model must contain 'ConvLSTM_units' or 'LSTM_units'")
 
     input_type = config.dataset["input"]
 

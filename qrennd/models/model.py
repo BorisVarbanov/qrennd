@@ -1,14 +1,15 @@
 """The 2-layer LSTM RNN model use for the decoder."""
 from itertools import repeat
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Dict, Optional, Union, List
 
+import numpy as np
 from tensorflow import concat, keras
 
 from ..configs import Config
 
 
 def get_model(
-    seq_size: int,
+    seq_size: Union[int, List[int]],
     vec_size: int,
     config: Config,
     optimizer: Optional[str] = None,
@@ -22,8 +23,9 @@ def get_model(
 
     Parameters
     ----------
-    seq_size : int
+    seq_size : int or List[int]
         The size of each sequence that is given to the LSTM layers.
+        The shape of each sequence that is given to the ConvLSTM layers.
     vec_size : Tuple[int]
         The size of the vector given directly to the evaluation layer.
     config : Config
@@ -55,21 +57,118 @@ def get_model(
     tensorflow.keras.Model
         The build and compiled model.
     """
-    lstm_input = keras.layers.Input(
-        shape=(None, seq_size),
-        dtype="float32",
-        name="lstm_input",
-    )
+    # Recurrent layers
+    if "LSTM_units" in config.model:
+        lstm_input = keras.layers.Input(
+            shape=(None, seq_size),
+            dtype="float32",
+            name="lstm_input",
+        )
+        lstm_units = config.model["LSTM_units"]
+        dropout_rates = config.model.get("LSTM_dropout_rates")
+        output = LSTM_layers(
+            lstm_input=lstm_input,
+            lstm_units=lstm_units,
+            dropout_rates=dropout_rates,
+        )
+    elif "ConvLSTM_units" in config.model:
+        convlstm_input = keras.layers.Input(
+            shape=(None, *seq_size),
+            dtype="float32",
+            name="convlstm_input",
+        )
+        convlstm_units = config.model["ConvLSTM_units"]
+        convlstm_kernels = config.model["ConvLSTM_kernels"]
+        dropout_rates = config.model.get("ConvLSTM_dropout_rates")
+        output = ConvLSTM_layers(
+            convlstm_input=convlstm_input,
+            convlstm_units=convlstm_units,
+            convlstm_kernels=convlstm_kernels,
+            dropout_rates=dropout_rates,
+        )
+    else:
+        raise ValueError("Config.model must contain 'ConvLSTM_units' or 'LSTM_units'")
 
+    # Evaluation layers
     eval_input = keras.layers.Input(
         shape=(vec_size,),
         dtype="float32",
         name="eval_input",
     )
+    concat_input = concat((output, eval_input), axis=1)
 
-    lstm_units = config.model["LSTM_units"]
-    dropout_rates = config.model.get("LSTM_dropout_rates")
+    l2_factor = config.model.get("l2_factor")
+    eval_units = config.model.get("eval_units", 64)
+    dropout_rate = config.model.get("eval_dropout_rate")
+    output_units = config.model.get("output_units", 1)
 
+    main_output = evaluation_layers(
+        eval_input=concat_input,
+        eval_units=eval_units,
+        output_units=output_units,
+        dropout_rate=dropout_rate,
+        l2_factor=l2_factor,
+        name="main",
+    )
+
+    aux_output = evaluation_layers(
+        eval_input=output,
+        eval_units=eval_units,
+        output_units=output_units,
+        dropout_rate=dropout_rate,
+        l2_factor=l2_factor,
+        name="aux",
+    )
+
+    # Compile model
+    model = keras.Model(
+        inputs=[lstm_input, eval_input],
+        outputs=[main_output, aux_output],
+        name=name or "decoder_model",
+    )
+
+    if optimizer is None:
+        opt_params = config.train.get("optimizer")
+        if opt_params is not None:
+            optimizer = keras.optimizers.Adam(**opt_params)
+        else:
+            optimizer = keras.optimizers.Adam()
+
+    if loss is None:
+        loss = config.train.get("loss")
+
+    if loss_weights is None:
+        loss_weights = config.train.get("loss_weights")
+
+    if metrics is None:
+        metrics = config.train.get("metrics")
+
+    model.compile(
+        optimizer=optimizer,
+        loss=loss,
+        loss_weights=loss_weights,
+        metrics=metrics,
+    )
+
+    # Load initial weights for the model if necessary
+    init_weights = config.init_weights
+    if init_weights is not None:
+        try:
+            experiment_dir = config.output_dir / config.experiment
+            model.load_weights(experiment_dir / init_weights)
+        except FileNotFoundError as error:
+            raise ValueError(
+                "Invalid initial weights in configuration file."
+            ) from error
+
+    return model
+
+
+def LSTM_layers(
+    lstm_input,
+    lstm_units: List[int],
+    dropout_rates: List[float] = None,
+):
     num_layers = len(lstm_units)
     if dropout_rates is None:
         dropout_rates = repeat(None, len(lstm_units))
@@ -107,105 +206,103 @@ def get_model(
     )
     output = act_layer(output)
 
-    concat_input = concat((output, eval_input), axis=1)
+    return output
 
-    l2_factor = config.model.get("l2_factor")
+
+def ConvLSTM_layers(
+    convlstm_input,
+    convlstm_units: List[int],
+    convlstm_kernels: List[int],
+    dropout_rates: List[float] = None,
+):
+    num_layers = len(convlstm_units)
+    if dropout_rates is None:
+        dropout_rates = repeat(None, len(convlstm_units))
+
+    if len(dropout_rates) != num_layers:
+        raise ValueError(
+            f"Mismatch between the number of ConvLSTM layers ({num_layers})"
+            "and the number of ConvLSTM dropout rate after each layer."
+        )
+    if len(kernel_sizes) != num_layers:
+        raise ValueError(
+            f"Mismatch between the number of ConvLSTM layers ({num_layers})"
+            "and the number of ConvLSTM kernel sizes."
+        )
+    inds = range(1, num_layers + 1)
+
+    output = None
+    for ind, units, rate in zip(inds, convlstm_units, dropout_rates):
+        return_sequences = ind != num_layers
+        convlstm_layer = keras.layers.ConvLSTM2D(
+            filters=units,
+            return_sequences=return_sequences,
+            name=f"ConvLSTM_{ind}",
+        )
+        if output is None:
+            output = convlstm_layer(convlstm_input)
+        else:
+            output = convlstm_layer(output)
+
+        if rate is not None:
+            dropout_layer = keras.layers.Dropout(
+                rate=rate,
+                name=f"dropout_ConvLSTM_{ind}",
+            )
+            output = dropout_layer(output)
+
+    act_layer = keras.layers.Activation(
+        activation="relu",
+        name="relu",
+    )
+    output = act_layer(output)
+
+    # reshape from [shots, filters, rows, cols] into [shots, dim].
+    # Reshape layer includes [shots] dimension
+    reshape_layer = keras.layers.Reshape(np.product(output.shape[1:]))
+    output = reshape_layer(output)
+
+    return output
+
+
+def evaluation_layers(
+    eval_input,
+    eval_units: int,
+    output_units: int,
+    dropout_rate: float = None,
+    l2_factor: float = None,
+    name: str = "eval",
+):
+    """
+    Adds two evaluation layers
+    """
     if l2_factor is not None:
         regularizer = keras.regularizers.L2(l2_factor)
     else:
         regularizer = None
 
-    eval_units = config.model.get("eval_units", 64)
-
-    rate = config.model.get("eval_dropout_rate")
-    output_units = config.model.get("output_units", 1)
-
+    # First evaluation layer
     dense_layer = keras.layers.Dense(
         units=eval_units,
         activation="relu",
         kernel_regularizer=regularizer,
-        name="main_dense",
+        name=f"{name}_dense",
     )
-    main_output = dense_layer(concat_input)
+    eval_output = dense_layer(eval_input)
 
-    if rate is not None:
+    if dropout_rate is not None:
         dropout_layer = keras.layers.Dropout(
-            rate=rate,
-            name="dropout_main_dense",
+            rate=dropout_rate,
+            name=f"dropout_{name}_dense",
         )
-        main_output = dropout_layer(main_output)
+        eval_output = dropout_layer(eval_output)
 
+    # Second evaluation layer
     output_layer = keras.layers.Dense(
         units=output_units,
         activation="sigmoid",
-        name="main_output",
+        name=f"{name}_output",
     )
-    main_output = output_layer(main_output)
+    eval_output = output_layer(eval_output)
 
-    if l2_factor is not None:
-        regularizer = keras.regularizers.L2(l2_factor)
-    else:
-        regularizer = None
-
-    dense_layer = keras.layers.Dense(
-        units=eval_units,
-        activation="relu",
-        kernel_regularizer=regularizer,
-        name="aux_dense",
-    )
-    aux_output = dense_layer(output)
-
-    if rate is not None:
-        dropout_layer = keras.layers.Dropout(
-            rate=rate,
-            name="dropout_aux_dense",
-        )
-        aux_output = dropout_layer(aux_output)
-
-    dense_layer = keras.layers.Dense(
-        units=output_units,
-        activation="sigmoid",
-        name="aux_output",
-    )
-    aux_output = dense_layer(aux_output)
-
-    model = keras.Model(
-        inputs=[lstm_input, eval_input],
-        outputs=[main_output, aux_output],
-        name=name or "decoder_model",
-    )
-
-    if optimizer is None:
-        opt_params = config.train.get("optimizer")
-        if opt_params is not None:
-            optimizer = keras.optimizers.Adam(**opt_params)
-        else:
-            optimizer = keras.optimizers.Adam()
-
-    if loss is None:
-        loss = config.train.get("loss")
-
-    if loss_weights is None:
-        loss_weights = config.train.get("loss_weights")
-
-    if metrics is None:
-        metrics = config.train.get("metrics")
-
-    model.compile(
-        optimizer=optimizer,
-        loss=loss,
-        loss_weights=loss_weights,
-        metrics=metrics,
-    )
-
-    init_weights = config.init_weights
-    if init_weights is not None:
-        try:
-            experiment_dir = config.output_dir / config.experiment
-            model.load_weights(experiment_dir / init_weights)
-        except FileNotFoundError as error:
-            raise ValueError(
-                "Invalid initial weights in configuration file."
-            ) from error
-
-    return model
+    return eval_output
