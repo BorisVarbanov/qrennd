@@ -1,0 +1,60 @@
+metadata:
+  experiment: 20230131-d3_rot-surf_circ-level_large-dataset
+  run: example-train
+  prev_run: null
+
+dataset:
+  train:
+    shots: 200000
+    rounds: !range [1, 20, 2]
+    states: ["000000000", "111111111"]
+
+  dev:
+    shots: 20000
+    rounds: !range [1, 20, 2]
+    states: ["000000000", "111111111"]
+
+  test:
+    shots: 20000
+    rounds: !range [1, 20, 2]
+    states: ["000000000", "111111111"]
+
+  rot_basis: false
+  folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
+  input: "defects"
+
+train:
+  optimizer:
+    learning_rate: 0.0001
+  loss:
+    main_output: binary_crossentropy
+    aux_output: binary_crossentropy
+  loss_weights:
+    main_output: 1.0
+    aux_output: 0.5
+  metrics:
+    main_output: accuracy
+    aux_output: accuracy
+  callbacks:
+    early_stop:
+      monitor: val_loss
+      mode: min
+      min_delta: 0
+      patience: 10
+    csv_log:
+      append: false
+    checkpoint:
+      monitor: val_loss
+      mode: min
+      save_best_only: true
+
+  epochs: 500
+  batch_size: 64
+
+model:
+  ConvLSTM_units: [64]
+  ConvLSTM_dropout_rates: [null]
+  eval_units: 64
+  eval_dropout_rate: 0.05
+  output_units: 1
+  l2_factor: null
