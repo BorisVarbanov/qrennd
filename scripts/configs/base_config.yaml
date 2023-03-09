@@ -1,7 +1,7 @@
 metadata:
   experiment: 20230131-d3_rot-surf_circ-level_large-dataset
   run: example-train
-  prev_run: null
+  init_weights: null
 
 dataset:
   train:
