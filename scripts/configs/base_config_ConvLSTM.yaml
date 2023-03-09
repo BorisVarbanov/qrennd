@@ -1,7 +1,7 @@
 metadata:
   experiment: 20230306-d3_rot-surf_biased-noise
   run: example-train
-  prev_run: null
+  init_weights: null
 
 dataset:
   train:
