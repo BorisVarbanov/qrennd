@@ -1,7 +1,7 @@
 metadata:
   experiment: 20230302-d5_rot-surf_simulated_google_20M
   run: google_simulated_eval-dr0-05
-  prev_run: null
+  init_weights: null
 
 dataset:
   train:
