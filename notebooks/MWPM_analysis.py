@@ -16,7 +16,7 @@ import pymatching
 import stim
 
 # %%
-EXP_NAME = "20230306-d3_rot-surf_biased-noise"
+EXP_NAME = "20230310-d3_rot-sruf_circ-level_meas-reset"
 MODEL_FOLDER = "MWPM"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 
@@ -129,6 +129,12 @@ out = model_decay.fit(
     log_fid.log_fid.values, params, x=log_fid.qec_round.values, min_qec=3
 )
 ax = out.plot_fit()
+ax.set_xlabel("QEC round")
+ax.set_ylabel("logical fidelity")
+ax.set_title("MWPM")
+fig = ax.get_figure()
+fig.tight_layout()
+fig.savefig(DIR / "log-fid_vs_QEC-round.pdf", format="pdf")
 plt.show()
 
 # %%
