@@ -78,7 +78,7 @@ config.to_yaml(config.run_dir / "config.yaml")
 history = model.fit(
     train_data,
     validation_data=val_data,
-    batch_size=config.train["epochs"],
+    batch_size=config.train["batch_size"],
     epochs=config.train["epochs"],
     callbacks=callbacks,
     shuffle=True,
