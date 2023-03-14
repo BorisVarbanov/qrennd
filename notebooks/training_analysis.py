@@ -5,8 +5,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230306-d3_rot-surf_biased-noise"
-MODEL_FOLDER = "20230211-094701-base_training_4M_dr-eval-lstm2-01"
+EXP_NAME = "20230310-d3_rot-surf_circ-level_meas-reset"
+MODEL_FOLDER = "20230314-095010_Boris_config"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 
 # %%
@@ -83,6 +83,10 @@ for metric in METRICS:
     axs[1].legend(frameon=False)
     axs[1].set_xlabel("Epochs")
     axs[1].set_xlim(EPOCH_CUT, max(dataframe.epoch) + 1)
+
+    fig.tight_layout()
+    fig.savefig(OUTPUT_DIR / EXP_NAME / MODEL_FOLDER / f"{metric}.pdf", format="pdf")
+    fig.savefig(OUTPUT_DIR / EXP_NAME / MODEL_FOLDER / f"{metric}.png", format="png")
 
 plt.show()
 
@@ -205,12 +209,15 @@ ax.plot(
 )
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
-ax.set_xticks(log_fid.qec_round.values[::2], log_fid.qec_round.values[::2])
 ax.set_yticks(np.arange(0.5, 1, 0.05), np.round(np.arange(0.5, 1, 0.05), decimals=2))
 ax.set_xlim(0, MAX_QEC + 0.5)
 ax.plot([], [], " ", label=f"$\\epsilon_L = {error_rate.nominal_value:.4f}$")
 ax.legend()
 ax.grid(which="major")
+fig = ax.get_figure()
+fig.tight_layout()
+fig.savefig(DIR / "log-fid_vs_qec-round.pdf", format="pdf")
+fig.savefig(DIR / "log-fid_vs_qec-round.png", format="png")
 plt.show()
 
 # %%
