@@ -6,12 +6,18 @@ import random
 import numpy as np
 import tensorflow as tf
 
-from qrennd import Config, get_callbacks, get_model, load_datasets
-from qec_util.layouts import Layout, set_coords
+from qrennd import (
+    Config,
+    Layout,
+    set_coords,
+    get_callbacks,
+    get_model,
+    load_datasets,
+)
 
 # %%
 # Parameters
-LAYOUT_FILE = "d3_rotated_layout.yaml"
+LAYOUT_FILE = "d5_rotated_layout.yaml"
 CONFIG_FILE = "base_config_google_d5.yaml"
 
 USERNAME = os.environ.get("USER")
