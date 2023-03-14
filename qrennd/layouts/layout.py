@@ -6,6 +6,7 @@ from os import path
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import numpy as np
 import networkx as nx
 import yaml
 from xarray import DataArray
@@ -451,3 +452,18 @@ def valid_attrs(attrs: Dict[str, Any], **conditions: Any) -> bool:
         if attr_val is None or attr_val != val:
             return False
     return True
+
+
+def index_coords(coords: List[int], reverse: bool = False):
+    unique_vals = set(coords)
+    num_unique_vals = len(unique_vals)
+
+    if reverse:
+        unique_inds = reversed(range(num_unique_vals))
+    else:
+        unique_inds = range(num_unique_vals)
+
+    mapping = dict(zip(unique_vals, unique_inds))
+
+    indicies = [mapping[coord] for coord in coords]
+    return indicies, num_unique_vals
