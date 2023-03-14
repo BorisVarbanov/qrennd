@@ -221,6 +221,33 @@ class Layout:
         )
         return data_arr
 
+    def expansion_matrix(self) -> DataArray:
+        node_view = self.graph.nodes(data=True)
+
+        anc_qubits = [node for node, data in node_view if data["role"] == "anc"]
+        coords = [node_view[anc]["coords"] for anc in anc_qubits]
+
+        rows, cols = zip(*coords)
+
+        row_inds, num_rows = index_coords(rows, reverse=True)
+        col_inds, num_cols = index_coords(cols)
+
+        num_anc = len(anc_qubits)
+        anc_inds = range(num_anc)
+
+        tensor = np.zeros((num_anc, num_rows, num_cols), dtype=bool)
+        tensor[anc_inds, row_inds, col_inds] = True
+        expanded_tensor = np.expand_dims(tensor, axis=1)
+
+        expansion_tensor = DataArray(
+            expanded_tensor,
+            dims=["anc_qubit", "channel", "row", "col"],
+            coords=dict(
+                anc_qubit=anc_qubits,
+            ),
+        )
+        return expansion_tensor
+
     def projection_matrix(self, stab_type: str) -> DataArray:
         """
         projection_matrix Returns the projection matrix, mapping
