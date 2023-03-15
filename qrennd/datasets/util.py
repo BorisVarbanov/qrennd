@@ -43,7 +43,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         )
 
     # Reshape if necessary
-    if "ConvLSTM_units" in config.model:
+    if config.model["use_conv"]:
         expansion_matrix = layout.expansion_matrix()
         dataset_gen = (
             [
@@ -53,10 +53,6 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
             ]
             for lstm_inputs, eval_inputs, log_errors in dataset_gen
         )
-    elif "LSTM_units" in config.model:
-        pass
-    else:
-        raise ValueError("Config.model must contain 'ConvLSTM_units' or 'LSTM_units'")
 
     # Process for keras.model input
     generator = (
