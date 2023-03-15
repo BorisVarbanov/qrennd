@@ -64,55 +64,61 @@ def get_model(
         dtype=input_dtype,
         name="lstm_input",
     )
-
-    # Recurrent layers
-    lstm_units = config.model["LSTM_units"]
-    dropout_rates = config.model.get("LSTM_dropout_rates")
-    if config.model["use_conv"]:
-        conv_kernels = config.model["conv_kernels"]
-        output = conv_lstm_network(
-            convlstm_input=lstm_input,
-            convlstm_units=lstm_units,
-            convlstm_kernels=conv_kernels,
-            dropout_rates=dropout_rates,
-        )
-    else:
-        output = lstm_network(
-            lstm_input=lstm_input,
-            lstm_units=lstm_units,
-            dropout_rates=dropout_rates,
-        )
-
-    # Evaluation layers
     eval_input = keras.layers.Input(
         shape=(vec_size,),
         dtype=input_dtype,
         name="eval_input",
     )
-    concat_input = concat((output, eval_input), axis=1)
 
+    # Get recurrent layers
+    lstm_units = config.model["LSTM_units"]
+    dropout_rates = config.model.get("LSTM_dropout_rates")
+    if config.model["use_conv"]:
+        conv_kernels = config.model["conv_kernels"]
+        lstm_network = conv_lstm_network(
+            convlstm_units=lstm_units,
+            convlstm_kernels=conv_kernels,
+            dropout_rates=dropout_rates,
+        )
+    else:
+        lstm_network = lstm_network(
+            lstm_units=lstm_units,
+            dropout_rates=dropout_rates,
+        )
+    # Apply recurrent layers
+    lstm_output = lstm_network[0](lstm_input)
+    for layer in lstm_network[1:]:
+        lstm_output = layer(lstm_output)
+
+    # Get evaluation layers
     l2_factor = config.model.get("l2_factor")
     eval_units = config.model.get("eval_units", 64)
     dropout_rate = config.model.get("eval_dropout_rate")
     output_units = config.model.get("output_units", 1)
 
-    main_output = evaluation_network(
-        eval_input=concat_input,
+    main_eval_network = evaluation_network(
         eval_units=eval_units,
         output_units=output_units,
         dropout_rate=dropout_rate,
         l2_factor=l2_factor,
         name="main",
     )
-
-    aux_output = evaluation_network(
-        eval_input=output,
+    aux_eval_network = evaluation_network(
         eval_units=eval_units,
         output_units=output_units,
         dropout_rate=dropout_rate,
         l2_factor=l2_factor,
         name="aux",
     )
+    # Apply evaluation layers
+    main_input = concat((lstm_output, eval_input), axis=1)
+    main_output = main_eval_network[0](main_input)
+    for layer in main_eval_network[1:]:
+        main_output = layer(main_output)
+
+    aux_output = aux_eval_network[0](lstm_output)
+    for layer in aux_eval_network[1:]:
+        aux_output = layer(aux_output)
 
     # Compile model
     model = keras.Model(
@@ -159,7 +165,6 @@ def get_model(
 
 
 def lstm_network(
-    lstm_input,
     lstm_units: List[int],
     dropout_rates: List[float] = None,
 ):
@@ -174,7 +179,6 @@ def lstm_network(
         )
     inds = range(1, num_layers + 1)
 
-    output = None
     for ind, units, rate in zip(inds, lstm_units, dropout_rates):
         return_sequences = ind != num_layers
         lstm_layer = keras.layers.LSTM(
@@ -182,29 +186,23 @@ def lstm_network(
             return_sequences=return_sequences,
             name=f"LSTM_{ind}",
         )
-        if output is None:
-            output = lstm_layer(lstm_input)
-        else:
-            output = lstm_layer(output)
+        yield lstm_layer
 
         if rate is not None:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
                 name=f"dropout_LSTM_{ind}",
             )
-            output = dropout_layer(output)
+            yield dropout_layer
 
     act_layer = keras.layers.Activation(
         activation="relu",
         name="relu",
     )
-    output = act_layer(output)
-
-    return output
+    yield act_layer
 
 
 def conv_lstm_network(
-    convlstm_input,
     convlstm_units: List[int],
     convlstm_kernels: List[int],
     dropout_rates: List[float] = None,
@@ -225,7 +223,6 @@ def conv_lstm_network(
         )
     inds = range(1, num_layers + 1)
 
-    output = None
     for ind, units, rate, kernel_size in zip(
         inds, convlstm_units, dropout_rates, convlstm_kernels
     ):
@@ -237,33 +234,27 @@ def conv_lstm_network(
             return_sequences=return_sequences,
             name=f"ConvLSTM_{ind}",
         )
-        if output is None:
-            output = convlstm_layer(convlstm_input)
-        else:
-            output = convlstm_layer(output)
+        yield convlstm_layer
 
         if rate is not None:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
                 name=f"dropout_ConvLSTM_{ind}",
             )
-            output = dropout_layer(output)
+            yield dropout_layer
 
     act_layer = keras.layers.Activation(
         activation="relu",
         name="relu",
     )
-    output = act_layer(output)
+    yield act_layer
 
     # reshape from [shots, filters, rows, cols] into [shots, dim].
     flatten_layer = keras.layers.Flatten()
-    output = flatten_layer(output)
-
-    return output
+    yield flatten_layer
 
 
 def evaluation_network(
-    eval_input,
     eval_units: int,
     output_units: int,
     dropout_rate: float = None,
@@ -285,14 +276,14 @@ def evaluation_network(
         kernel_regularizer=regularizer,
         name=f"{name}_dense",
     )
-    eval_output = dense_layer(eval_input)
+    yield dense_layer
 
     if dropout_rate is not None:
         dropout_layer = keras.layers.Dropout(
             rate=dropout_rate,
             name=f"dropout_{name}_dense",
         )
-        eval_output = dropout_layer(eval_output)
+        yield dropout_layer
 
     # Second evaluation layer
     output_layer = keras.layers.Dense(
@@ -300,6 +291,4 @@ def evaluation_network(
         activation="sigmoid",
         name=f"{name}_output",
     )
-    eval_output = output_layer(eval_output)
-
-    return eval_output
+    yield output_layer
