@@ -66,7 +66,7 @@ def get_model(
     if "LSTM_units" in config.model:
         lstm_units = config.model["LSTM_units"]
         dropout_rates = config.model.get("LSTM_dropout_rates")
-        output = LSTM_layers(
+        output = lstm_network(
             lstm_input=lstm_input,
             lstm_units=lstm_units,
             dropout_rates=dropout_rates,
@@ -75,7 +75,7 @@ def get_model(
         convlstm_units = config.model["ConvLSTM_units"]
         convlstm_kernels = config.model["ConvLSTM_kernels"]
         dropout_rates = config.model.get("ConvLSTM_dropout_rates")
-        output = ConvLSTM_layers(
+        output = conv_lstm_network(
             convlstm_input=lstm_input,
             convlstm_units=convlstm_units,
             convlstm_kernels=convlstm_kernels,
@@ -97,7 +97,7 @@ def get_model(
     dropout_rate = config.model.get("eval_dropout_rate")
     output_units = config.model.get("output_units", 1)
 
-    main_output = evaluation_layers(
+    main_output = evaluation_network(
         eval_input=concat_input,
         eval_units=eval_units,
         output_units=output_units,
@@ -106,7 +106,7 @@ def get_model(
         name="main",
     )
 
-    aux_output = evaluation_layers(
+    aux_output = evaluation_network(
         eval_input=output,
         eval_units=eval_units,
         output_units=output_units,
@@ -159,7 +159,7 @@ def get_model(
     return model
 
 
-def LSTM_layers(
+def lstm_network(
     lstm_input,
     lstm_units: List[int],
     dropout_rates: List[float] = None,
@@ -204,7 +204,7 @@ def LSTM_layers(
     return output
 
 
-def ConvLSTM_layers(
+def conv_lstm_network(
     convlstm_input,
     convlstm_units: List[int],
     convlstm_kernels: List[int],
@@ -264,7 +264,7 @@ def ConvLSTM_layers(
     return output
 
 
-def evaluation_layers(
+def evaluation_network(
     eval_input,
     eval_units: int,
     output_units: int,
