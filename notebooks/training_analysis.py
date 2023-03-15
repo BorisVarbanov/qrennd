@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 # %%
 EXP_NAME = "20230310-d3_rot-surf_circ-level_meas-reset"
-MODEL_FOLDER = "20230314-095010_Boris_config"
+MODEL_FOLDER = "20230312-225051_first_try_QEC1-50"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 
 # %%
