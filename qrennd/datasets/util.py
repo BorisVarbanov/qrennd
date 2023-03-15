@@ -7,6 +7,7 @@ from .preprocessing import (
     to_defects,
     to_measurements,
     to_syndromes,
+    to_conv_input,
     to_model_input,
 )
 from .sequences import RaggedSequence
@@ -46,11 +47,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     if config.model["use_conv"]:
         expansion_matrix = layout.expansion_matrix()
         dataset_gen = (
-            [
-                lstm_inputs @ expansion_matrix,
-                eval_inputs,
-                log_errors,
-            ]
+            to_conv_input(lstm_inputs, eval_inputs, log_errors, expansion_matrix)
             for lstm_inputs, eval_inputs, log_errors in dataset_gen
         )
 

@@ -120,6 +120,17 @@ def to_defects(
     return defects, final_defects, log_errors
 
 
+def to_conv_input(
+    lstm_inputs: DataArray,
+    eval_inputs: DataArray,
+    log_errors: DataArray,
+    expansion_matrix: DataArray,
+):
+    lstm_inputs = lstm_inputs @ expansion_matrix
+
+    return lstm_inputs, eval_inputs, log_errors
+
+
 def to_model_input(
     lstm_inputs: DataArray,
     eval_inputs: DataArray,
