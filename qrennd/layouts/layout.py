@@ -86,6 +86,7 @@ class Layout:
         setup["name"] = self.name
         setup["description"] = self.description
         setup["interaction_order"] = self.interaction_order
+        setup["distance"] = self.distance
 
         layout = []
         for node, attrs in self.graph.nodes(data=True):

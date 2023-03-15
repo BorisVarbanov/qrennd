@@ -12,7 +12,6 @@ def get_model(
     seq_size: List[int],
     vec_size: int,
     config: Config,
-    input_dtype: Optional[str] = "bool",
     optimizer: Optional[str] = None,
     loss: Optional[Dict[str, Union[str, Callable]]] = None,
     loss_weights: Optional[Dict[str, float]] = None,
@@ -61,12 +60,12 @@ def get_model(
     """
     lstm_input = keras.layers.Input(
         shape=(None, *seq_size),
-        dtype=input_dtype,
+        dtype="float32",
         name="lstm_input",
     )
     eval_input = keras.layers.Input(
         shape=(vec_size,),
-        dtype=input_dtype,
+        dtype="float32",
         name="eval_input",
     )
 
@@ -86,8 +85,8 @@ def get_model(
             dropout_rates=dropout_rates,
         )
     # Apply recurrent layers
-    lstm_output = lstm_network[0](lstm_input)
-    for layer in lstm_network[1:]:
+    lstm_output = next(lstm_network)(lstm_input)
+    for layer in lstm_network:
         lstm_output = layer(lstm_output)
 
     # Get evaluation layers
@@ -112,12 +111,12 @@ def get_model(
     )
     # Apply evaluation layers
     main_input = concat((lstm_output, eval_input), axis=1)
-    main_output = main_eval_network[0](main_input)
-    for layer in main_eval_network[1:]:
+    main_output = next(main_eval_network)(main_input)
+    for layer in main_eval_network:
         main_output = layer(main_output)
 
-    aux_output = aux_eval_network[0](lstm_output)
-    for layer in aux_eval_network[1:]:
+    aux_output = next(aux_eval_network)(lstm_output)
+    for layer in aux_eval_network:
         aux_output = layer(aux_output)
 
     # Compile model
