@@ -12,6 +12,7 @@ def get_model(
     seq_size: List[int],
     vec_size: int,
     config: Config,
+    input_dtype: Optional[str] = "bool",
     optimizer: Optional[str] = None,
     loss: Optional[Dict[str, Union[str, Callable]]] = None,
     loss_weights: Optional[Dict[str, float]] = None,
@@ -27,6 +28,8 @@ def get_model(
         The shape of each sequence that is given to the LSTM or ConvLSTM layers.
     vec_size : Tuple[int]
         The size of the vector given directly to the evaluation layer.
+    input_dtype : str
+        Data type for the input of the model.
     config : Config
         The model configuartion, given as a Config dataclass. The configuation file
         should define the model property with following keys:
@@ -58,7 +61,7 @@ def get_model(
     """
     lstm_input = keras.layers.Input(
         shape=(None, *seq_size),
-        dtype="float32",
+        dtype=input_dtype,
         name="lstm_input",
     )
 
@@ -87,7 +90,7 @@ def get_model(
     # Evaluation layers
     eval_input = keras.layers.Input(
         shape=(vec_size,),
-        dtype="float32",
+        dtype=input_dtype,
         name="eval_input",
     )
     concat_input = concat((output, eval_input), axis=1)
