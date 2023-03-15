@@ -257,9 +257,8 @@ def conv_lstm_network(
     output = act_layer(output)
 
     # reshape from [shots, filters, rows, cols] into [shots, dim].
-    # Reshape layer includes [shots] dimension
-    reshape_layer = keras.layers.Reshape((np.product(output.shape[1:]),))
-    output = reshape_layer(output)
+    flatten_layer = keras.layers.Flatten()
+    output = flatten_layer(output)
 
     return output
 
