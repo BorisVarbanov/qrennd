@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 # %%
 EXP_NAME = "20230310-d3_rot-surf_circ-level_meas-reset"
-MODEL_FOLDER = "20230312-225051_first_try_QEC1-50"
+MODEL_FOLDER = "20230315-164612_Boris_config_defects"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 
 # %%
@@ -156,7 +156,7 @@ else:
 if config.dataset["input"] == "measurements":
     vec_size = len(layout.get_qubits(role="data"))
 else:
-    vec_size = int(0.5 * seq_size)
+    vec_size = len(layout.get_qubits(role="anc")) // 2
 
 model = get_model(
     seq_size=seq_size,
