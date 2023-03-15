@@ -57,6 +57,7 @@ train:
   batch_size: 64
 
 model:
+  use_conv: false
   LSTM_units: [64, 64]
   LSTM_dropout_rates: [null, null]
   eval_units: 64

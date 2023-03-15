@@ -66,26 +66,22 @@ def get_model(
     )
 
     # Recurrent layers
-    if "LSTM_units" in config.model:
-        lstm_units = config.model["LSTM_units"]
-        dropout_rates = config.model.get("LSTM_dropout_rates")
+    lstm_units = config.model["LSTM_units"]
+    dropout_rates = config.model.get("LSTM_dropout_rates")
+    if config.model["use_conv"]:
+        conv_kernels = config.model["conv_kernels"]
+        output = conv_lstm_network(
+            convlstm_input=lstm_input,
+            convlstm_units=lstm_units,
+            convlstm_kernels=conv_kernels,
+            dropout_rates=dropout_rates,
+        )
+    else:
         output = lstm_network(
             lstm_input=lstm_input,
             lstm_units=lstm_units,
             dropout_rates=dropout_rates,
         )
-    elif "ConvLSTM_units" in config.model:
-        convlstm_units = config.model["ConvLSTM_units"]
-        convlstm_kernels = config.model["ConvLSTM_kernels"]
-        dropout_rates = config.model.get("ConvLSTM_dropout_rates")
-        output = conv_lstm_network(
-            convlstm_input=lstm_input,
-            convlstm_units=convlstm_units,
-            convlstm_kernels=convlstm_kernels,
-            dropout_rates=dropout_rates,
-        )
-    else:
-        raise ValueError("Config.model must contain 'ConvLSTM_units' or 'LSTM_units'")
 
     # Evaluation layers
     eval_input = keras.layers.Input(
