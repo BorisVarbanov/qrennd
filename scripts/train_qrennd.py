@@ -58,9 +58,9 @@ val_data = load_datasets(config=config, layout=layout, dataset_name="dev")
 
 # %%
 if "ConvLSTM_units" in config.model:
-    seq_size = layout.expansion_matrix().shape[1:]
+    seq_size = (1, layout.distance + 1, layout.distance + 1)
 else:
-    seq_size = len(layout.get_qubits(role="anc"))
+    seq_size = (len(layout.get_qubits(role="anc")),)
 
 if config.dataset["input"] == "measurements":
     vec_size = len(layout.get_qubits(role="data"))

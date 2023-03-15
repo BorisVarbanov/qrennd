@@ -148,7 +148,10 @@ config = Config.from_yaml(
 )
 
 # %%
-seq_size = len(layout.get_qubits(role="anc"))
+if "ConvLSTM_units" in config.model:
+    seq_size = (1, layout.distance + 1, layout.distance + 1)
+else:
+    seq_size = (len(layout.get_qubits(role="anc")),)
 
 if config.dataset["input"] == "measurements":
     vec_size = len(layout.get_qubits(role="data"))

@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 # %%
 EXP_NAME = "20230302-d5_rot-surf_simulated_google_20M"
-MODEL_FOLDER = "20230307-142114_google_d5_lr0-0001_dim128"
+MODEL_FOLDER = "20230314-113238_google_simulated_dr0-05_batch64"
 LAYOUT_NAME = "d5_rotated_layout.yaml"
 
 # %%
@@ -148,12 +148,15 @@ config = Config.from_yaml(
 )
 
 # %%
-seq_size = len(layout.get_qubits(role="anc"))
+if "ConvLSTM_units" in config.model:
+    seq_size = (1, layout.distance + 1, layout.distance + 1)
+else:
+    seq_size = (len(layout.get_qubits(role="anc")),)
 
 if config.dataset["input"] == "measurements":
     vec_size = len(layout.get_qubits(role="data"))
 else:
-    vec_size = int(0.5 * seq_size)
+    vec_size = len(layout.get_qubits(role="anc")) // 2
 
 model = get_model(
     seq_size=seq_size,

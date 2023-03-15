@@ -9,7 +9,7 @@ from ..configs import Config
 
 
 def get_model(
-    seq_size: Union[int, List[int]],
+    seq_size: List[int],
     vec_size: int,
     config: Config,
     optimizer: Optional[str] = None,
@@ -23,9 +23,8 @@ def get_model(
 
     Parameters
     ----------
-    seq_size : int or List[int]
-        The size of each sequence that is given to the LSTM layers.
-        The shape of each sequence that is given to the ConvLSTM layers.
+    seq_size : List[int]
+        The shape of each sequence that is given to the LSTM or ConvLSTM layers.
     vec_size : Tuple[int]
         The size of the vector given directly to the evaluation layer.
     config : Config
@@ -57,31 +56,27 @@ def get_model(
     tensorflow.keras.Model
         The build and compiled model.
     """
+    lstm_input = keras.layers.Input(
+        shape=(None, *seq_size),
+        dtype="float32",
+        name="lstm_input",
+    )
+
     # Recurrent layers
     if "LSTM_units" in config.model:
-        input_var = keras.layers.Input(
-            shape=(None, seq_size),
-            dtype="float32",
-            name="lstm_input",
-        )
         lstm_units = config.model["LSTM_units"]
         dropout_rates = config.model.get("LSTM_dropout_rates")
         output = LSTM_layers(
-            lstm_input=input_var,
+            lstm_input=lstm_input,
             lstm_units=lstm_units,
             dropout_rates=dropout_rates,
         )
     elif "ConvLSTM_units" in config.model:
-        input_var = keras.layers.Input(
-            shape=(None, *seq_size),
-            dtype="float32",
-            name="lstm_input",  # naming convention in dataset_generator
-        )
         convlstm_units = config.model["ConvLSTM_units"]
         convlstm_kernels = config.model["ConvLSTM_kernels"]
         dropout_rates = config.model.get("ConvLSTM_dropout_rates")
         output = ConvLSTM_layers(
-            convlstm_input=input_var,
+            convlstm_input=lstm_input,
             convlstm_units=convlstm_units,
             convlstm_kernels=convlstm_kernels,
             dropout_rates=dropout_rates,
@@ -122,7 +117,7 @@ def get_model(
 
     # Compile model
     model = keras.Model(
-        inputs=[input_var, eval_input],
+        inputs=[lstm_input, eval_input],
         outputs=[main_output, aux_output],
         name=name or "decoder_model",
     )
