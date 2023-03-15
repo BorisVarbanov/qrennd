@@ -47,7 +47,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         expansion_matrix = layout.expansion_matrix()
         dataset_gen = (
             [
-                xr.dot(lstm_inputs, expansion_matrix, dims=["anc_qubit"]),
+                lstm_inputs @ expansion_matrix,
                 eval_inputs,
                 log_errors,
             ]
