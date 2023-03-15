@@ -74,19 +74,19 @@ def get_model(
     dropout_rates = config.model.get("LSTM_dropout_rates")
     if config.model["use_conv"]:
         conv_kernels = config.model["conv_kernels"]
-        lstm_network = conv_lstm_network(
+        lstm_layers = conv_lstm_network(
             convlstm_units=lstm_units,
             convlstm_kernels=conv_kernels,
             dropout_rates=dropout_rates,
         )
     else:
-        lstm_network = lstm_network(
+        lstm_layers = lstm_network(
             lstm_units=lstm_units,
             dropout_rates=dropout_rates,
         )
     # Apply recurrent layers
-    lstm_output = next(lstm_network)(lstm_input)
-    for layer in lstm_network:
+    lstm_output = next(lstm_layers)(lstm_input)
+    for layer in lstm_layers:
         lstm_output = layer(lstm_output)
 
     # Get evaluation layers
@@ -95,14 +95,14 @@ def get_model(
     dropout_rate = config.model.get("eval_dropout_rate")
     output_units = config.model.get("output_units", 1)
 
-    main_eval_network = evaluation_network(
+    main_eval_layers = evaluation_network(
         eval_units=eval_units,
         output_units=output_units,
         dropout_rate=dropout_rate,
         l2_factor=l2_factor,
         name="main",
     )
-    aux_eval_network = evaluation_network(
+    aux_eval_layers = evaluation_network(
         eval_units=eval_units,
         output_units=output_units,
         dropout_rate=dropout_rate,
@@ -111,12 +111,12 @@ def get_model(
     )
     # Apply evaluation layers
     main_input = concat((lstm_output, eval_input), axis=1)
-    main_output = next(main_eval_network)(main_input)
-    for layer in main_eval_network:
+    main_output = next(main_eval_layers)(main_input)
+    for layer in main_eval_layers:
         main_output = layer(main_output)
 
-    aux_output = next(aux_eval_network)(lstm_output)
-    for layer in aux_eval_network:
+    aux_output = next(aux_eval_layers)(lstm_output)
+    for layer in aux_eval_layers:
         aux_output = layer(aux_output)
 
     # Compile model
