@@ -1,6 +1,6 @@
-from typing import Optional, List
+from typing import Optional
 
-from xarray import DataArray, Dataset, dot
+from xarray import DataArray, Dataset
 
 
 def get_syndromes(anc_meas: DataArray) -> DataArray:
@@ -120,25 +120,23 @@ def to_defects(
     return defects, final_defects, log_errors
 
 
-def to_conv_input(
-    lstm_inputs: DataArray,
-    eval_inputs: DataArray,
-    log_errors: DataArray,
-    expansion_matrix: DataArray,
-):
-    lstm_inputs = lstm_inputs @ expansion_matrix
-
-    return lstm_inputs, eval_inputs, log_errors
-
-
 def to_model_input(
     lstm_inputs: DataArray,
     eval_inputs: DataArray,
     log_errors: DataArray,
+    expansion_matrix: Optional[DataArray] = None,
 ):
+    if expansion_matrix is not None:
+        expanded_inputs = lstm_inputs @ expansion_matrix
+        lstm_input = expanded_inputs.values.astype(bool)
+    else:
+        lstm_input = lstm_input.values.astype(bool)
+
+    eval_input = eval_inputs.values.astype(bool)
+
     inputs = dict(
-        lstm_input=lstm_inputs.values.astype(bool),
-        eval_input=eval_inputs.values.astype(bool),
+        lstm_input=lstm_input,
+        eval_input=eval_input,
     )
     outputs = log_errors.values.astype(bool)
 

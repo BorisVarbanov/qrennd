@@ -1,15 +1,7 @@
-import xarray as xr
-
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
-from .preprocessing import (
-    to_defects,
-    to_measurements,
-    to_syndromes,
-    to_conv_input,
-    to_model_input,
-)
+from .preprocessing import to_defects, to_measurements, to_model_input, to_syndromes
 from .sequences import RaggedSequence
 
 
@@ -43,17 +35,11 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
             "options are 'measurements', 'syndromes', 'defects' and 'MWPM'."
         )
 
-    # Reshape if necessary
-    if config.model["use_conv"]:
-        expansion_matrix = layout.expansion_matrix()
-        dataset_gen = (
-            to_conv_input(lstm_inputs, eval_inputs, log_errors, expansion_matrix)
-            for lstm_inputs, eval_inputs, log_errors in dataset_gen
-        )
+    exp_matrix = layout.expansion_matrix() if config.model["use_conv"] else None
 
     # Process for keras.model input
     generator = (
-        to_model_input(lstm_inputs, eval_inputs, log_errors)
+        to_model_input(lstm_inputs, eval_inputs, log_errors, exp_matrix)
         for lstm_inputs, eval_inputs, log_errors in dataset_gen
     )
 
