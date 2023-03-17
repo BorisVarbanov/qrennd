@@ -44,7 +44,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         )
 
     # Reshape if necessary
-    if config.model["use_conv"]:
+    if "ConvLSTM_units" in config.model:
         expansion_matrix = layout.expansion_matrix()
         dataset_gen = (
             to_conv_input(lstm_inputs, eval_inputs, log_errors, expansion_matrix)

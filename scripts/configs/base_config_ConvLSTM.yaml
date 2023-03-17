@@ -52,9 +52,10 @@ train:
   batch_size: 64
 
 model:
-  use_conv: true
-  LSTM_units: [32]
-  conv_kernels: [3]
+  ConvLSTM_units: [16]
+  ConvLSTM_dropout_rates: [null]
+  ConvLSTM_kernels: [3]
+  LSTM_units: [64]
   LSTM_dropout_rates: [null]
   eval_units: 64
   eval_dropout_rate: 0.05

@@ -5,9 +5,9 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230302-d5_rot-surf_simulated_google_20M"
-MODEL_FOLDER = "20230314-113238_google_simulated_dr0-05_batch64"
-LAYOUT_NAME = "d5_rotated_layout.yaml"
+EXP_NAME = "20230302-d3_rot-surf_simulated_google_20M"
+MODEL_FOLDER = "20230316-170646_google_simulated_dr0-05_conv16"
+LAYOUT_NAME = "d3_rotated_layout.yaml"
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -148,7 +148,7 @@ config = Config.from_yaml(
 )
 
 # %%
-if config.model["use_conv"]:
+if "ConvLSTM_units" in config.model:
     seq_size = (1, layout.distance + 1, layout.distance + 1)
 else:
     seq_size = (len(layout.get_qubits(role="anc")),)

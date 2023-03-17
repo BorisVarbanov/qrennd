@@ -1,5 +1,5 @@
 """The 2-layer LSTM RNN model use for the decoder."""
-from itertools import repeat
+from itertools import repeat, chain
 from typing import Callable, Dict, Optional, Union, List
 
 import numpy as np
@@ -58,7 +58,7 @@ def get_model(
     tensorflow.keras.Model
         The build and compiled model.
     """
-    lstm_input = keras.layers.Input(
+    recurrent_input = keras.layers.Input(
         shape=(None, *seq_size),
         dtype="float32",
         name="lstm_input",
@@ -69,25 +69,50 @@ def get_model(
         name="eval_input",
     )
 
-    # Get recurrent layers
-    lstm_units = config.model["LSTM_units"]
-    dropout_rates = config.model.get("LSTM_dropout_rates")
-    if config.model["use_conv"]:
-        conv_kernels = config.model["conv_kernels"]
-        lstm_layers = conv_lstm_network(
-            convlstm_units=lstm_units,
-            convlstm_kernels=conv_kernels,
+    if "ConvLSTM_units" in config.model:
+        # Get ConvLSTM layers
+        convlstm_units = config.model["ConvLSTM_units"]
+        dropout_rates = config.model.get("ConvLSTM_dropout_rates")
+        convlstm_kernels = config.model["ConvLSTM_kernels"]
+        to_LSTM_input = "LSTM_units" in config.model
+        convlstm_layers = conv_lstm_network(
+            convlstm_units=convlstm_units,
+            convlstm_kernels=convlstm_kernels,
             dropout_rates=dropout_rates,
+            to_LSTM_input=to_LSTM_input,
         )
+        # Apply ConvLSTM layers
+        conv_output = next(convlstm_layers)(recurrent_input)
+        for layer in convlstm_layers:
+            conv_output = layer(conv_output)
+
+        # Reshape for next layer
+        if to_LSTM_input:
+            # reshape from [shots, timesteps, filters, rows, cols]
+            # into [shots, timesteps, dim]
+            reshape_layer = keras.layers.Reshape(
+                (conv_output.shape[1], np.product(conv_output.shape[2:]))
+            )
+            lstm_input = reshape_layer(conv_output)
+        else:
+            # reshape from [shots, filters, rows, cols] into [shots, dim]
+            flatten_layer = keras.layers.Flatten()
+            recurrent_output = flatten_layer(conv_output)
     else:
+        lstm_input = recurrent_input
+
+    if "LSTM_units" in config.model:
+        # Get LSTM layers
+        lstm_units = config.model["LSTM_units"]
+        dropout_rates = config.model.get("LSTM_dropout_rates")
         lstm_layers = lstm_network(
             lstm_units=lstm_units,
             dropout_rates=dropout_rates,
         )
-    # Apply recurrent layers
-    lstm_output = next(lstm_layers)(lstm_input)
-    for layer in lstm_layers:
-        lstm_output = layer(lstm_output)
+        # Apply ConvLSTM layers
+        recurrent_output = next(lstm_layers)(lstm_input)
+        for layer in lstm_layers:
+            recurrent_output = layer(recurrent_output)
 
     # Get evaluation layers
     l2_factor = config.model.get("l2_factor")
@@ -110,18 +135,18 @@ def get_model(
         name="aux",
     )
     # Apply evaluation layers
-    main_input = concat((lstm_output, eval_input), axis=1)
+    main_input = concat((recurrent_output, eval_input), axis=1)
     main_output = next(main_eval_layers)(main_input)
     for layer in main_eval_layers:
         main_output = layer(main_output)
 
-    aux_output = next(aux_eval_layers)(lstm_output)
+    aux_output = next(aux_eval_layers)(recurrent_output)
     for layer in aux_eval_layers:
         aux_output = layer(aux_output)
 
     # Compile model
     model = keras.Model(
-        inputs=[lstm_input, eval_input],
+        inputs=[recurrent_input, eval_input],
         outputs=[main_output, aux_output],
         name=name or "decoder_model",
     )
@@ -169,7 +194,7 @@ def lstm_network(
 ):
     num_layers = len(lstm_units)
     if dropout_rates is None:
-        dropout_rates = repeat(None, len(lstm_units))
+        dropout_rates = list(repeat(None, len(lstm_units)))
 
     if len(dropout_rates) != num_layers:
         raise ValueError(
@@ -196,7 +221,7 @@ def lstm_network(
 
     act_layer = keras.layers.Activation(
         activation="relu",
-        name="relu",
+        name="relu_lstm",
     )
     yield act_layer
 
@@ -204,8 +229,15 @@ def lstm_network(
 def conv_lstm_network(
     convlstm_units: List[int],
     convlstm_kernels: List[int],
-    dropout_rates: List[float] = None,
+    dropout_rates: Optional[List[float]] = None,
+    to_LSTM_input: Optional[Union[bool, List[int]]] = False,
 ):
+    """
+    to_LSTM_input : bool or List[int]
+        If False, adds Flatten layer so the output can be passed
+        to the evaluation layers.
+        If List[int], this list corresponds to [timesteps, ]
+    """
     num_layers = len(convlstm_units)
     if dropout_rates is None:
         dropout_rates = repeat(None, len(convlstm_units))
@@ -225,7 +257,7 @@ def conv_lstm_network(
     for ind, units, rate, kernel_size in zip(
         inds, convlstm_units, dropout_rates, convlstm_kernels
     ):
-        return_sequences = ind != num_layers
+        return_sequences = (ind != num_layers) or to_LSTM_input
         convlstm_layer = keras.layers.ConvLSTM2D(
             filters=units,
             kernel_size=kernel_size,
@@ -244,13 +276,9 @@ def conv_lstm_network(
 
     act_layer = keras.layers.Activation(
         activation="relu",
-        name="relu",
+        name="relu_convlstm",
     )
     yield act_layer
-
-    # reshape from [shots, filters, rows, cols] into [shots, dim].
-    flatten_layer = keras.layers.Flatten()
-    yield flatten_layer
 
 
 def evaluation_network(
