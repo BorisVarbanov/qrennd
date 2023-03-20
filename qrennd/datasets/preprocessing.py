@@ -164,10 +164,10 @@ def to_prob_defects(
         where stab correspond to the final stabilizers.
     """
 
-    assert dataset.meas_reset
     anc_meas = dataset.anc_meas.transpose(..., "qec_round", "anc_qubit")
     data_meas = dataset.data_meas.transpose(..., "data_qubit")
     n_shots, n_rounds, n_anc = anc_meas.shape
+    shift = -1 if dataset.meas_reset else -2
 
     # Get Gaussian params
     meas_error = 1 / (2 * np.sqrt(2) * erfcinv(2 * dataset.prob_error))
@@ -193,8 +193,8 @@ def to_prob_defects(
 
     # defects
     prob_defects = anc_prob_1 * anc_prob_0.shift(
-        qec_round=-1, fill_value=1
-    ) + anc_prob_0 * anc_prob_1.shift(qec_round=-1, fill_value=0)
+        qec_round=shift, fill_value=1
+    ) + anc_prob_0 * anc_prob_1.shift(qec_round=shift, fill_value=0)
 
     # final defects
     prob_final_defects = np.zeros((n_shots, n_anc))
