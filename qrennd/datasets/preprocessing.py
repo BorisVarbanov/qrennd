@@ -170,10 +170,9 @@ def to_prob_defects(
     n_shots, n_rounds, n_anc = anc_meas.shape
 
     # Get Gaussian params
-    meas_error = 1 / (2 * np.sqrt(2) * erfcinv(2 * 0.001))
+    meas_error = 1 / (2 * np.sqrt(2) * erfcinv(2 * dataset.prob_error))
     rng = np.random.default_rng(seed=int(dataset.seed.values))  # avoids TypeError
 
-    # Get probabilities for the ancilla and data measurements
     anc_gauss = rng.normal(scale=meas_error, size=anc_meas.shape)
     anc_gauss = DataArray(data=anc_gauss, coords=anc_meas.coords)
     soft_outcomes = anc_gauss + anc_meas
