@@ -76,8 +76,8 @@ def get_model(
         convlstm_kernels = config.model["ConvLSTM_kernels"]
         to_LSTM_input = "LSTM_units" in config.model
         convlstm_layers = conv_lstm_network(
-            convlstm_units=convlstm_units,
-            convlstm_kernels=convlstm_kernels,
+            filters=convlstm_units,
+            kernels=convlstm_kernels,
             dropout_rates=dropout_rates,
             return_sequences=to_LSTM_input,
         )
@@ -104,7 +104,7 @@ def get_model(
         lstm_units = config.model["LSTM_units"]
         dropout_rates = config.model.get("LSTM_dropout_rates")
         lstm_layers = lstm_network(
-            lstm_units=lstm_units,
+            units=lstm_units,
             dropout_rates=dropout_rates,
         )
         # Apply ConvLSTM layers
@@ -119,15 +119,13 @@ def get_model(
     output_units = config.model.get("output_units", 1)
 
     main_eval_layers = evaluation_network(
-        eval_units=eval_units,
-        output_units=output_units,
+        units=[eval_units, output_units],
         dropout_rate=dropout_rate,
         l2_factor=l2_factor,
         name="main",
     )
     aux_eval_layers = evaluation_network(
-        eval_units=eval_units,
-        output_units=output_units,
+        units=[eval_units, output_units],
         dropout_rate=dropout_rate,
         l2_factor=l2_factor,
         name="aux",
