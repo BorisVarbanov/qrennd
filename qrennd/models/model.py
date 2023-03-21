@@ -79,7 +79,7 @@ def get_model(
             convlstm_units=convlstm_units,
             convlstm_kernels=convlstm_kernels,
             dropout_rates=dropout_rates,
-            to_LSTM_input=to_LSTM_input,
+            return_sequences=to_LSTM_input,
         )
         # Apply ConvLSTM layers
         conv_output = next(convlstm_layers)(recurrent_input)
@@ -187,12 +187,12 @@ def get_model(
 
 
 def lstm_network(
-    lstm_units: List[int],
-    dropout_rates: List[float] = None,
+    units: List[int],
+    dropout_rates: Optional[List[float]] = None,
 ):
-    num_layers = len(lstm_units)
+    num_layers = len(units)
     if dropout_rates is None:
-        dropout_rates = list(repeat(None, len(lstm_units)))
+        dropout_rates = list(repeat(None, len(units)))
 
     if len(dropout_rates) != num_layers:
         raise ValueError(
@@ -201,19 +201,19 @@ def lstm_network(
         )
     inds = range(1, num_layers + 1)
 
-    for ind, units, rate in zip(inds, lstm_units, dropout_rates):
-        return_sequences = ind != num_layers
+    for ind_, units_, rate_ in zip(inds, units, dropout_rates):
+        return_sequences_ = ind_ != num_layers
         lstm_layer = keras.layers.LSTM(
-            units=units,
-            return_sequences=return_sequences,
-            name=f"LSTM_{ind}",
+            units=units_,
+            return_sequences=return_sequences_,
+            name=f"LSTM_{ind_}",
         )
         yield lstm_layer
 
-        if rate is not None:
+        if rate_ is not None:
             dropout_layer = keras.layers.Dropout(
-                rate=rate,
-                name=f"dropout_LSTM_{ind}",
+                rate=rate_,
+                name=f"dropout_LSTM_{ind_}",
             )
             yield dropout_layer
 
@@ -225,50 +225,44 @@ def lstm_network(
 
 
 def conv_lstm_network(
-    convlstm_units: List[int],
-    convlstm_kernels: List[int],
+    filters: List[int],
+    kernel_sizes: List[int],
     dropout_rates: Optional[List[float]] = None,
-    to_LSTM_input: Optional[Union[bool, List[int]]] = False,
+    return_sequences: Optional[bool] = False,
 ):
-    """
-    to_LSTM_input : bool or List[int]
-        If False, adds Flatten layer so the output can be passed
-        to the evaluation layers.
-        If List[int], this list corresponds to [timesteps, ]
-    """
-    num_layers = len(convlstm_units)
+    num_layers = len(filters)
     if dropout_rates is None:
-        dropout_rates = list(repeat(None, len(convlstm_units)))
+        dropout_rates = list(repeat(None, num_layers))
 
     if len(dropout_rates) != num_layers:
         raise ValueError(
             f"Mismatch between the number of ConvLSTM layers ({num_layers})"
             "and the number of ConvLSTM dropout rate after each layer."
         )
-    if len(convlstm_kernels) != num_layers:
+    if len(kernels) != num_layers:
         raise ValueError(
             f"Mismatch between the number of ConvLSTM layers ({num_layers})"
             "and the number of ConvLSTM kernel sizes."
         )
-    inds = range(1, num_layers + 1)
 
-    for ind, units, rate, kernel_size in zip(
-        inds, convlstm_units, dropout_rates, convlstm_kernels
+    inds = range(1, num_layers + 1)
+    for ind_, filters_, rate_, kernel_size_ in zip(
+        inds, filters, dropout_rates, kernel_sizes
     ):
-        return_sequences = (ind != num_layers) or to_LSTM_input
+        return_sequences_ = (ind_ != num_layers) or return_sequences
         convlstm_layer = keras.layers.ConvLSTM2D(
-            filters=units,
-            kernel_size=kernel_size,
+            filters=filters_,
+            kernel_size=kernel_size_,
             data_format="channels_first",
-            return_sequences=return_sequences,
-            name=f"ConvLSTM_{ind}",
+            return_sequences=return_sequences_,
+            name=f"ConvLSTM_{ind_}",
         )
         yield convlstm_layer
 
-        if rate is not None:
+        if rate_ is not None:
             dropout_layer = keras.layers.Dropout(
-                rate=rate,
-                name=f"dropout_ConvLSTM_{ind}",
+                rate=rate_,
+                name=f"dropout_ConvLSTM_{ind_}",
             )
             yield dropout_layer
 
@@ -280,39 +274,48 @@ def conv_lstm_network(
 
 
 def evaluation_network(
-    eval_units: int,
-    output_units: int,
-    dropout_rate: float = None,
-    l2_factor: float = None,
-    name: str = "eval",
+    units: List[int],
+    dropout_rates: Optional[List[float]] = None,
+    l2_factor: Optional[float] = None,
+    name: Optional[str] = "eval",
 ):
-    """
-    Adds two evaluation layers
-    """
+    num_layers = len(units)
+    if dropout_rates is None:
+        dropout_rates = list(repeat(None, num_layers))
+
+    if len(dropout_rates) != num_layers:
+        raise ValueError(
+            f"Mismatch between the number of ConvLSTM layers ({num_layers})"
+            "and the number of ConvLSTM dropout rate after each layer."
+        )
+
     if l2_factor is not None:
         regularizer = keras.regularizers.L2(l2_factor)
     else:
         regularizer = None
 
-    # First evaluation layer
-    dense_layer = keras.layers.Dense(
-        units=eval_units,
-        activation="relu",
-        kernel_regularizer=regularizer,
-        name=f"{name}_dense",
-    )
-    yield dense_layer
-
-    if dropout_rate is not None:
-        dropout_layer = keras.layers.Dropout(
-            rate=dropout_rate,
-            name=f"dropout_{name}_dense",
+    inds = range(1, num_layers)
+    for ind_, units_, rate_, kernel_size_ in zip(
+        inds, units, dropout_rates, kernel_sizes
+    ):
+        dense_layer = keras.layers.Dense(
+            units=units_,
+            activation=activation_,
+            kernel_regularizer=regularizer,
+            name=f"{name}_dense_{ind_}",
         )
-        yield dropout_layer
+        yield dense_layer
 
-    # Second evaluation layer
+        if rate_ is not None:
+            dropout_layer = keras.layers.Dropout(
+                rate=rate_,
+                name=f"dropout_{name}_dense_{ind_}",
+            )
+            yield dropout_layer
+
+    # Final evaluation layer
     output_layer = keras.layers.Dense(
-        units=output_units,
+        units=units[-1],
         activation="sigmoid",
         name=f"{name}_output",
     )
