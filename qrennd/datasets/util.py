@@ -36,7 +36,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         )
 
     # Process for keras.model input
-    exp_matrix = layout.expansion_matrix() if "ConvLSTM_units" in config.model else None
+    exp_matrix = layout.expansion_matrix() if config.model["ConvLSTM"] else None
     input_gen = (
         to_model_input(lstm_inputs, eval_inputs, log_errors, exp_matrix)
         for lstm_inputs, eval_inputs, log_errors in processed_gen

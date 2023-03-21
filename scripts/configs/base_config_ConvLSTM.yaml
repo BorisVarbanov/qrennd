@@ -52,12 +52,14 @@ train:
   batch_size: 64
 
 model:
-  ConvLSTM_units: [16]
-  ConvLSTM_dropout_rates: [null]
-  ConvLSTM_kernels: [3]
-  LSTM_units: [64]
-  LSTM_dropout_rates: [null]
-  eval_units: 64
-  eval_dropout_rate: 0.05
-  output_units: 1
-  l2_factor: null
+  ConvLSTM: 
+     filters: [64, 64]
+     dropout_rates: [null, null]
+     kernel_sizes: [2, 2]
+  LSTM:
+     units: [64, 64]
+     dropout_rates: [null, null]
+  eval:
+     units: [64]
+     dropout_rates: [null]
+     l2_factor: null

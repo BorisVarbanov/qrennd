@@ -57,7 +57,7 @@ train_data = load_datasets(config=config, layout=layout, dataset_name="train")
 val_data = load_datasets(config=config, layout=layout, dataset_name="dev")
 
 # %%
-if "ConvLSTM_units" in config.model:
+if config.model["ConvLSTM"]:
     seq_size = (1, layout.distance + 1, layout.distance + 1)
 else:
     seq_size = (len(layout.get_qubits(role="anc")),)

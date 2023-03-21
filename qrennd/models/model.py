@@ -69,17 +69,16 @@ def get_model(
         name="eval_input",
     )
 
-    if "ConvLSTM_units" in config.model:
+    if conv_config := config.model["ConvLSTM"]:
         # Get ConvLSTM layers
-        convlstm_units = config.model["ConvLSTM_units"]
-        dropout_rates = config.model.get("ConvLSTM_dropout_rates")
-        convlstm_kernels = config.model["ConvLSTM_kernels"]
-        to_LSTM_input = "LSTM_units" in config.model
+        filters = conv_config["filters"]
+        dropout_rates = conv_config.get("dropout_rates")
+        kernel_sizes = conv_config["kernel_sizes"]
         convlstm_layers = conv_lstm_network(
-            filters=convlstm_units,
-            kernels=convlstm_kernels,
+            layer_filters=filters,
+            kernel_sizes=kernel_sizes,
             dropout_rates=dropout_rates,
-            return_sequences=to_LSTM_input,
+            return_sequences=config.model["LSTM"],
         )
         # Apply ConvLSTM layers
         conv_output = next(convlstm_layers)(recurrent_input)
@@ -87,7 +86,7 @@ def get_model(
             conv_output = layer(conv_output)
 
         # Reshape for next layer
-        if to_LSTM_input:
+        if config.model["LSTM"]:
             reshape_layer = keras.layers.Reshape(
                 (-1, np.product(conv_output.shape[2:]))
             )
@@ -99,12 +98,12 @@ def get_model(
         # No ConvLSTM layers
         lstm_input = recurrent_input
 
-    if "LSTM_units" in config.model:
+    if config_lstm := config.model["LSTM"]:
         # Get LSTM layers
-        lstm_units = config.model["LSTM_units"]
-        dropout_rates = config.model.get("LSTM_dropout_rates")
+        units = config_lstm["units"]
+        dropout_rates = config_lstm.get("dropout_rates")
         lstm_layers = lstm_network(
-            units=lstm_units,
+            layer_units=units,
             dropout_rates=dropout_rates,
         )
         # Apply ConvLSTM layers
@@ -113,20 +112,20 @@ def get_model(
             recurrent_output = layer(recurrent_output)
 
     # Get evaluation layers
-    l2_factor = config.model.get("l2_factor")
-    eval_units = config.model.get("eval_units", 64)
-    dropout_rate = config.model.get("eval_dropout_rate")
-    output_units = config.model.get("output_units", 1)
+    config_eval = config.model["eval"]
+    units = config_eval["units"]
+    l2_factor = config_eval.get("l2_factor")
+    dropout_rates = config_eval.get("dropout_rate")
 
     main_eval_layers = evaluation_network(
-        units=[eval_units, output_units],
-        dropout_rate=dropout_rate,
+        layer_units=units,
+        dropout_rates=dropout_rates,
         l2_factor=l2_factor,
         name="main",
     )
     aux_eval_layers = evaluation_network(
-        units=[eval_units, output_units],
-        dropout_rate=dropout_rate,
+        layer_units=units,
+        dropout_rates=dropout_rates,
         l2_factor=l2_factor,
         name="aux",
     )
@@ -185,10 +184,10 @@ def get_model(
 
 
 def lstm_network(
-    units: List[int],
+    layer_units: List[int],
     dropout_rates: Optional[List[float]] = None,
 ):
-    num_layers = len(units)
+    num_layers = len(layer_units)
     if dropout_rates is None:
         dropout_rates = list(repeat(None, len(units)))
 
@@ -199,19 +198,18 @@ def lstm_network(
         )
     inds = range(1, num_layers + 1)
 
-    for ind_, units_, rate_ in zip(inds, units, dropout_rates):
-        return_sequences_ = ind_ != num_layers
+    for ind, units, rate in zip(inds, layer_units, dropout_rates):
         lstm_layer = keras.layers.LSTM(
-            units=units_,
-            return_sequences=return_sequences_,
-            name=f"LSTM_{ind_}",
+            units=units,
+            return_sequences=ind != num_layers,
+            name=f"LSTM_{ind}",
         )
         yield lstm_layer
 
-        if rate_ is not None:
+        if rate is not None:
             dropout_layer = keras.layers.Dropout(
-                rate=rate_,
-                name=f"dropout_LSTM_{ind_}",
+                rate=rate,
+                name=f"dropout_LSTM_{ind}",
             )
             yield dropout_layer
 
@@ -223,12 +221,12 @@ def lstm_network(
 
 
 def conv_lstm_network(
-    filters: List[int],
+    layer_filters: List[int],
     kernel_sizes: List[int],
     dropout_rates: Optional[List[float]] = None,
     return_sequences: Optional[bool] = False,
 ):
-    num_layers = len(filters)
+    num_layers = len(layer_filters)
     if dropout_rates is None:
         dropout_rates = list(repeat(None, num_layers))
 
@@ -237,30 +235,29 @@ def conv_lstm_network(
             f"Mismatch between the number of ConvLSTM layers ({num_layers})"
             "and the number of ConvLSTM dropout rate after each layer."
         )
-    if len(kernels) != num_layers:
+    if len(kernel_sizes) != num_layers:
         raise ValueError(
             f"Mismatch between the number of ConvLSTM layers ({num_layers})"
             "and the number of ConvLSTM kernel sizes."
         )
 
     inds = range(1, num_layers + 1)
-    for ind_, filters_, rate_, kernel_size_ in zip(
-        inds, filters, dropout_rates, kernel_sizes
+    for ind, filters, rate, kernel_size in zip(
+        inds, layer_filters, dropout_rates, kernel_sizes
     ):
-        return_sequences_ = (ind_ != num_layers) or return_sequences
         convlstm_layer = keras.layers.ConvLSTM2D(
-            filters=filters_,
-            kernel_size=kernel_size_,
+            filters=filters,
+            kernel_size=kernel_size,
             data_format="channels_first",
-            return_sequences=return_sequences_,
-            name=f"ConvLSTM_{ind_}",
+            return_sequences=(ind != num_layers) or return_sequences,
+            name=f"ConvLSTM_{ind}",
         )
         yield convlstm_layer
 
-        if rate_ is not None:
+        if rate is not None:
             dropout_layer = keras.layers.Dropout(
-                rate=rate_,
-                name=f"dropout_ConvLSTM_{ind_}",
+                rate=rate,
+                name=f"dropout_ConvLSTM_{ind}",
             )
             yield dropout_layer
 
@@ -272,12 +269,12 @@ def conv_lstm_network(
 
 
 def evaluation_network(
-    units: List[int],
+    layer_units: List[int],
     dropout_rates: Optional[List[float]] = None,
     l2_factor: Optional[float] = None,
     name: Optional[str] = "eval",
 ):
-    num_layers = len(units)
+    num_layers = len(layer_units)
     if dropout_rates is None:
         dropout_rates = list(repeat(None, num_layers))
 
@@ -292,28 +289,26 @@ def evaluation_network(
     else:
         regularizer = None
 
-    inds = range(1, num_layers)
-    for ind_, units_, rate_, kernel_size_ in zip(
-        inds, units, dropout_rates, kernel_sizes
-    ):
+    inds = range(1, num_layers + 1)
+    for ind, units, rate in zip(inds, layer_units, dropout_rates):
         dense_layer = keras.layers.Dense(
-            units=units_,
-            activation=activation_,
+            units=units,
+            activation="relu",
             kernel_regularizer=regularizer,
-            name=f"{name}_dense_{ind_}",
+            name=f"{name}_dense_{ind}",
         )
         yield dense_layer
 
-        if rate_ is not None:
+        if rate is not None:
             dropout_layer = keras.layers.Dropout(
-                rate=rate_,
-                name=f"dropout_{name}_dense_{ind_}",
+                rate=rate,
+                name=f"dropout_{name}_dense_{ind}",
             )
             yield dropout_layer
 
     # Final evaluation layer
     output_layer = keras.layers.Dense(
-        units=units[-1],
+        units=1,
         activation="sigmoid",
         name=f"{name}_output",
     )
