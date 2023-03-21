@@ -35,16 +35,8 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
             "options are 'measurements', 'syndromes', 'defects' and 'MWPM'."
         )
 
-    # Reshape if necessary
-    if "ConvLSTM_units" in config.model:
-        expansion_matrix = layout.expansion_matrix()
-        dataset_gen = (
-            to_conv_input(lstm_inputs, eval_inputs, log_errors, expansion_matrix)
-            for lstm_inputs, eval_inputs, log_errors in dataset_gen
-        )
-
     # Process for keras.model input
-    exp_matrix = layout.expansion_matrix() if config.model["ConvLSTM_units"] else None
+    exp_matrix = layout.expansion_matrix() if "ConvLSTM_units" in config.model else None
     generator = (
         to_model_input(lstm_inputs, eval_inputs, log_errors, exp_matrix)
         for lstm_inputs, eval_inputs, log_errors in dataset_gen

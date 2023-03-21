@@ -61,7 +61,7 @@ def get_model(
     recurrent_input = keras.layers.Input(
         shape=(None, *seq_size),
         dtype="float32",
-        name="lstm_input",
+        name="recurrent_input",
     )
     eval_input = keras.layers.Input(
         shape=(vec_size,),
@@ -88,17 +88,15 @@ def get_model(
 
         # Reshape for next layer
         if to_LSTM_input:
-            # reshape from [shots, timesteps, filters, rows, cols]
-            # into [shots, timesteps, dim]
             reshape_layer = keras.layers.Reshape(
-                (conv_output.shape[1], np.product(conv_output.shape[2:]))
+                (-1, np.product(conv_output.shape[2:]))
             )
             lstm_input = reshape_layer(conv_output)
         else:
-            # reshape from [shots, filters, rows, cols] into [shots, dim]
             flatten_layer = keras.layers.Flatten()
             recurrent_output = flatten_layer(conv_output)
     else:
+        # No ConvLSTM layers
         lstm_input = recurrent_input
 
     if "LSTM_units" in config.model:
@@ -240,7 +238,7 @@ def conv_lstm_network(
     """
     num_layers = len(convlstm_units)
     if dropout_rates is None:
-        dropout_rates = repeat(None, len(convlstm_units))
+        dropout_rates = list(repeat(None, len(convlstm_units)))
 
     if len(dropout_rates) != num_layers:
         raise ValueError(

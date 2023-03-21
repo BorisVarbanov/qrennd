@@ -121,21 +121,21 @@ def to_defects(
 
 
 def to_model_input(
-    lstm_inputs: DataArray,
+    recurrent_inputs: DataArray,
     eval_inputs: DataArray,
     log_errors: DataArray,
     expansion_matrix: Optional[DataArray] = None,
 ):
     if expansion_matrix is not None:
-        expanded_inputs = lstm_inputs @ expansion_matrix
-        lstm_input = expanded_inputs.values.astype(bool)
+        expanded_inputs = recurrent_inputs @ expansion_matrix
+        recurrent_input = expanded_inputs.values.astype(bool)
     else:
-        lstm_input = lstm_input.values.astype(bool)
+        recurrent_input = recurrent_inputs.values.astype(bool)
 
     eval_input = eval_inputs.values.astype(bool)
 
     inputs = dict(
-        lstm_input=lstm_input,
+        recurrent_input=recurrent_input,
         eval_input=eval_input,
     )
     outputs = log_errors.values.astype(bool)
