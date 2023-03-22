@@ -1,5 +1,6 @@
 name: Rotated d=3 surface code layout.
 description: Layout file for a 17-qubits rotated surface code. Follows the frequency scheme and labeling used in the DC lab.
+distance: 3
 
 freq_order: ["low", "mid", "high"]
 
