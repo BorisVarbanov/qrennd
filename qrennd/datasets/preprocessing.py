@@ -1,9 +1,13 @@
-from itertools import permutations
+from itertools import product
 from typing import Optional
 
 import numpy as np
 from scipy.special import erfcinv
 from xarray import DataArray, Dataset
+
+
+def odd_parity(bits):
+    return sum(bits) % 2
 
 
 def get_syndromes(anc_meas: DataArray) -> DataArray:
@@ -147,11 +151,8 @@ def norm_pdf(x, loc, scale):
     return prob / scale
 
 
-def state_probs(measurements, means, dev, rng):
-    samples = rng.normal(means, dev, size=(*measurements.shape, 2))
-    soft_outcomes = np.where(measurements, samples[..., 1], samples[..., 0])
-
-    outcome_probs = norm_pdf(soft_outcomes[..., None], means, dev)
+def state_probs(outcomes, means, dev):
+    outcome_probs = norm_pdf(outcomes[..., None], means, dev)
     outcome_probs = np.moveaxis(outcome_probs, -1, 0)
 
     state_probs = outcome_probs / np.sum(outcome_probs, axis=0)
@@ -180,12 +181,11 @@ def to_prob_defects(
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     """
-
     anc_meas = dataset.anc_meas.transpose(..., "qec_round", "anc_qubit")
     data_meas = dataset.data_meas.transpose(..., "data_qubit")
 
     num_shots, _, num_anc = anc_meas.shape
-    round_shift = -1 if dataset.meas_reset else -2
+    round_shift = 1 if dataset.meas_reset else 2
 
     # Get Gaussian params
     means = np.array([-1, 1])
@@ -194,63 +194,70 @@ def to_prob_defects(
 
     rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
 
+    samples = rng.normal(means, dev, size=(*anc_meas.shape, 2))
+    outcomes = np.where(anc_meas.values, samples[..., 1], samples[..., 0])
+
     anc_probs = DataArray(
-        data=state_probs(anc_meas.values, means, dev, rng),
+        data=state_probs(outcomes, means, dev),
         dims=("state", *anc_meas.dims),
         coords=dict(state=[0, 1], **anc_meas.coords),
     )
 
+    # defect probabilities
+    defect_probs = anc_probs[0] * anc_probs[1].shift(
+        qec_round=round_shift, fill_value=0
+    )
+    defect_probs += anc_probs[1] * anc_probs[0].shift(
+        qec_round=round_shift, fill_value=1
+    )
+
+    samples = rng.normal(means, dev, size=(*data_meas.shape, 2))
+    outcomes = np.where(data_meas.values, samples[..., 1], samples[..., 0])
+
     data_probs = DataArray(
-        data=state_probs(data_meas.values, means, dev, rng),
+        data=state_probs(outcomes, means, dev),
         dims=("state", *data_meas.dims),
         coords=dict(state=[0, 1], **data_meas.coords),
     )
 
-    # defects
-    prob_defects = anc_probs[0] * anc_probs[1].shift(
-        qec_round=round_shift, fill_value=0
-    )
-    prob_defects += anc_probs[1] * anc_probs[0].shift(
-        qec_round=round_shift, fill_value=1
-    )
-
     # final defects
-    prob_final_defects = np.zeros((num_shots, num_anc))
-    for anc_idx, ancilla in enumerate(proj_mat.anc_qubit):
+    stab_qubits = proj_mat.anc_qubit.values
+    data = np.zeros((num_shots, len(stab_qubits)))
+
+    for ind, anc_qubit in enumerate(stab_qubits):
         # select measurement probabilities of the given detector
-        detector = proj_mat.sel(anc_qubit=ancilla)
-        probs_0 = [
-            data_probs[0].sel(data_qubit=q)
-            for q in detector.data_qubit
-            if detector.sel(data_qubit=q)
-        ]
-        probs_1 = [
-            data_probs[1].sel(data_qubit=q)
-            for q in detector.data_qubit
-            if detector.sel(data_qubit=q)
-        ]
-        probs_0.append(anc_probs[0].sel(anc_qubit=ancilla).isel(qec_round=-1))
-        probs_1.append(anc_probs[1].sel(anc_qubit=ancilla).isel(qec_round=-1))
+        sel_round = dataset.qec_round.values[-1]
 
-        # generate combinations
-        combinations = set()
-        n_qubits = len(probs_0)
-        for odd in range(1, n_qubits + 1, 2):
-            tmp = [k < odd for k in range(n_qubits)]  # odd=3, n_qubits=5: [1,1,1,0,0]
-            combinations = combinations.union(set(permutations(tmp)))
+        proj_vec = proj_mat.sel(anc_qubit=anc_qubit)
 
-        # calculate probabililities
-        defect_prob = 0
-        for combination in combinations:
-            combination = np.array(combination)[:, np.newaxis]
-            defect_prob += np.product(
-                np.where(np.repeat(combination, num_shots, axis=1), probs_1, probs_0),
-                axis=0,
-            )
+        proj_probs = data_probs.where(proj_vec, drop=True)
+        anc_prob = anc_probs.sel(anc_qubit=anc_qubit, qec_round=sel_round)
 
-        prob_final_defects[:, anc_idx] = defect_prob
+        probs = np.concatenate((proj_probs.values, anc_prob.values[..., None]), axis=-1)
+
+        num_qubits = proj_probs.data_qubit.size + 1
+        products = product((0, 1), repeat=num_qubits)
+        odd_products = filter(odd_parity, products)
+        combinations = np.array(list(odd_products))
+
+        comb_probs = np.where(combinations[:, None], probs[1], probs[0])
+        defect_prob = np.sum(np.prod(comb_probs, axis=-1), axis=0)
+
+        data[:, ind] = defect_prob
+
+    final_defect_probs = DataArray(
+        data=data,
+        dims=["shot", "anc_qubit"],
+        coords=dict(shot=dataset.shot, anc_qubit=stab_qubits),
+    )
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
-    return prob_defects, prob_final_defects, log_errors
+    inputs = dict(
+        lstm_input=defect_probs.values,
+        eval_input=final_defect_probs.values,
+    )
+    outputs = log_errors.values
+
+    return inputs, outputs
