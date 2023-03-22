@@ -1,6 +1,6 @@
 """The 2-layer LSTM RNN model use for the decoder."""
-from itertools import repeat, chain
-from typing import Callable, Dict, Optional, Union, List
+from itertools import repeat
+from typing import Callable, Dict, List, Optional, Union
 
 import numpy as np
 from tensorflow import concat, keras
@@ -189,7 +189,7 @@ def lstm_network(
 ):
     num_layers = len(layer_units)
     if dropout_rates is None:
-        dropout_rates = list(repeat(None, len(units)))
+        dropout_rates = list(repeat(None, len(layer_units)))
 
     if len(dropout_rates) != num_layers:
         raise ValueError(
