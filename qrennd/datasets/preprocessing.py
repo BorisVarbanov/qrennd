@@ -194,16 +194,14 @@ def to_prob_defects(
 
     rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
 
-    data = get_state_probs(anc_meas.values, means, dev, rng)
     anc_probs = DataArray(
-        data=data,
+        data=state_probs(anc_meas.values, means, dev, rng),
         dims=("state", *anc_meas.dims),
         coords=dict(state=[0, 1], **anc_meas.coords),
     )
 
-    data = get_state_probs(data_meas.values, means, dev, rng)
     data_probs = DataArray(
-        data=data,
+        data=state_probs(data_meas.values, means, dev, rng),
         dims=("state", *data_meas.dims),
         coords=dict(state=[0, 1], **data_meas.coords),
     )
