@@ -62,6 +62,6 @@ model:
      units: [64, 64]
      dropout_rates: [null, 0.05]
   eval:
-     units: [64, 1]
-     dropout_rates: [0.05, null]
+     units: [64]
+     dropout_rates: [0.05]
      l2_factor: null
