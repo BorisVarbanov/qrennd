@@ -3,7 +3,6 @@ from typing import Optional
 
 import numpy as np
 from scipy.special import erfcinv
-from scipy.stats import norm
 from xarray import DataArray, Dataset
 
 
@@ -142,11 +141,17 @@ def to_defects(
     return inputs, outputs
 
 
-def get_state_probs(measurements, means, dev, rng=None):
-    samples = norm.rvs(means, dev, size=(*measurements.shape, 2), random_state=rng)
-    soft_outcomes = np.where(measurements, samples[..., 0], samples[..., 1])
+def norm_pdf(x, loc, scale):
+    y = np.subtract(x, loc) / scale
+    prob = np.exp(-(y**2) / 2) / np.sqrt(2 * np.pi)
+    return prob / scale
 
-    outcome_probs = norm.pdf(soft_outcomes[..., None], means, dev)
+
+def state_probs(measurements, means, dev, rng):
+    samples = rng.normal(means, dev, size=(*measurements.shape, 2))
+    soft_outcomes = np.where(measurements, samples[..., 1], samples[..., 0])
+
+    outcome_probs = norm_pdf(soft_outcomes[..., None], means, dev)
     outcome_probs = np.moveaxis(outcome_probs, -1, 0)
 
     state_probs = outcome_probs / np.sum(outcome_probs, axis=0)
@@ -179,7 +184,7 @@ def to_prob_defects(
     anc_meas = dataset.anc_meas.transpose(..., "qec_round", "anc_qubit")
     data_meas = dataset.data_meas.transpose(..., "data_qubit")
 
-    num_shots, num_rounds, num_anc = anc_meas.shape
+    num_shots, _, num_anc = anc_meas.shape
     round_shift = -1 if dataset.meas_reset else -2
 
     # Get Gaussian params
