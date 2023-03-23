@@ -51,6 +51,25 @@ def get_final_defects(
 def get_state_probs(
     outcomes: xr.DataArray, means: List[float], dev: float
 ) -> xr.DataArray:
+    """
+    get_state_probs Calculates the probabilities of the qubit
+    being in a given state (0 or 1) given the soft measurement
+    outcomes.
+
+    Parameters
+    ----------
+    outcomes : xr.DataArray
+        The soft measurement outcomes.
+    means : List[float]
+        The mean of the (projected 1D) Gaussian distributions for each state.
+    dev : float
+        The standard deviation of each Gaussian (assumed to be the same).
+
+    Returns
+    -------
+    xr.DataArray
+        The probabilities of the qubit being in each state given the outcomes.
+    """
     probs_gen = (norm_pdf(outcomes, mean, dev) for mean in means)
     outcome_probs = xr.concat(probs_gen, dim="state")
     outcome_probs = outcome_probs.assign_coords(state=[0, 1])
@@ -59,13 +78,27 @@ def get_state_probs(
 
 
 def get_defect_probs(anc_probs: xr.DataArray) -> xr.DataArray:
+    """
+    get_defect_probs Calculates the probability of observing a defect, given
+    the probabilities of the ancilla qubits being in a given state (0 or 1).
+
+    Parameters
+    ----------
+    anc_probs : xr.DataArray
+        The probabilities of each ancilla qubits being in a given state (0 or 1) over
+        each round of the experiment.
+
+    Returns
+    -------
+    xr.DataArray
+        The probabilities of observing a defect at each round.
+    """
     round_shift = 1 if anc_probs.meas_reset else 2
 
     shifted_probs = anc_probs.shift(qec_round=round_shift)
-    prod_product = anc_probs.dot(shifted_probs, dims="state")
-    no_defect_probs = prod_product.fillna(anc_probs.sel(state=0))
-
-    return 1 - no_defect_probs
+    prob_product = anc_probs.dot(shifted_probs, dims="state")
+    defect_probs = 1 - prob_product.fillna(anc_probs.sel(state=0))
+    return defect_probs
 
 
 def to_measurements(
