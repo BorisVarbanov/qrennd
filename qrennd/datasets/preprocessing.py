@@ -1,23 +1,23 @@
 from itertools import product
-from typing import List, Optional
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 import xarray as xr
 from scipy.special import erfcinv
 
 
-def dev_from_error(means, error_prob):
+def dev_from_error(means: Tuple[float, float], error_prob: float) -> float:
     ground_mean, exc_mean = means
     midpoint = 0.5 * np.abs(ground_mean - exc_mean)
     dev = midpoint / (np.sqrt(2) * erfcinv(2 * error_prob))
     return dev
 
 
-def odd_parity(bits):
+def odd_parity(bits: Sequence[int]) -> int:
     return sum(bits) % 2
 
 
-def norm_pdf(x: np.ndarray, means: List[float], dev: float):
+def norm_pdf(x: np.ndarray, means: Tuple[float, float], dev: float) -> np.ndarray:
     y = np.subtract(x, means) / dev
     prob = np.exp(-(y**2) / 2) / np.sqrt(2 * np.pi)
     return prob / dev
@@ -56,7 +56,7 @@ def get_final_defects(
 
 
 def get_state_probs(
-    outcomes: xr.DataArray, means: List[float], dev: float
+    outcomes: xr.DataArray, means: Tuple[float, float], dev: float
 ) -> xr.DataArray:
     """
     get_state_probs Calculates the probabilities of the qubit
@@ -268,10 +268,10 @@ def to_defects(
 
 
 def to_model_input(
-    recurrent_inputs: DataArray,
-    eval_inputs: DataArray,
-    log_errors: DataArray,
-    expansion_matrix: Optional[DataArray] = None,
+    recurrent_inputs: xr.DataArray,
+    eval_inputs: xr.DataArray,
+    log_errors: xr.DataArray,
+    expansion_matrix: Optional[xr.DataArray] = None,
 ):
     if expansion_matrix is not None:
         expanded_inputs = recurrent_inputs @ expansion_matrix
