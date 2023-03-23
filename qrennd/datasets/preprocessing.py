@@ -6,6 +6,13 @@ import xarray as xr
 from scipy.special import erfcinv
 
 
+def dev_from_error(means, error_prob):
+    ground_mean, exc_mean = means
+    midpoint = 0.5 * np.abs(ground_mean - exc_mean)
+    dev = midpoint / (np.sqrt(2) * erfcinv(2 * error_prob))
+    return dev
+
+
 def odd_parity(bits):
     return sum(bits) % 2
 
@@ -236,8 +243,7 @@ def to_defect_probs(
 
     # Get Gaussian params
     means = np.array([-1, 1])
-    midpoint = 0.5 * np.abs(means[0] - means[1])
-    dev = midpoint / (np.sqrt(2) * erfcinv(2 * float(dataset.error_prob)))
+    dev = dev_from_error(means, float(dataset.error_prob))
 
     rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
 
