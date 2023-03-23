@@ -72,7 +72,6 @@ def get_state_probs(
     """
     probs_gen = (norm_pdf(outcomes, mean, dev) for mean in means)
     outcome_probs = xr.concat(probs_gen, dim="state")
-    outcome_probs = outcome_probs.assign_coords(state=[0, 1])
     state_probs = outcome_probs / outcome_probs.sum(dim="state")
     return state_probs
 
@@ -249,7 +248,7 @@ def to_defect_probs(
     defect_probs = get_defect_probs(anc_probs)
 
     samples = rng.normal(means, dev, size=(*data_meas.shape, 2))
-    data_outcomes = np.where(data_meas.values, samples[..., 1], samples[..., 0])
+    data_outcomes = xr.where(data_meas, samples[..., 1], samples[..., 0])
 
     data_probs = get_state_probs(data_outcomes, means, dev)
 
