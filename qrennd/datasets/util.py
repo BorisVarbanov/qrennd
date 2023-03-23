@@ -30,7 +30,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     elif input_type == "defects":
         generator = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
     elif input_type == "prob_defects":
-        generator = (to_prob_defects(dataset, proj_matrix) for dataset in dataset_gen)
+        generator = (to_defect_probs(dataset, proj_matrix) for dataset in dataset_gen)
     else:
         raise ValueError(
             f"Unknown input data type {input_type}, the possible "
