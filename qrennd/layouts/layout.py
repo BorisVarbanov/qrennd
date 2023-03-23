@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from collections import deque
 from copy import copy, deepcopy
-from os import path
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import numpy as np
 import networkx as nx
+import numpy as np
 import yaml
 from xarray import DataArray
 
@@ -86,6 +85,7 @@ class Layout:
         setup["name"] = self.name
         setup["description"] = self.description
         setup["interaction_order"] = self.interaction_order
+        setup["distance"] = self.distance
 
         layout = []
         for node, attrs in self.graph.nodes(data=True):

@@ -10,17 +10,17 @@ RaggedSeq = TypeVar("RaggedSeq", bound="RaggedSequence")
 class RaggedSequence(Sequence):
     def __init__(
         self,
-        lstm_inputs: List[ndarray],
+        recurrent_inputs: List[ndarray],
         eval_inputs: List[ndarray],
         outputs: List[ndarray],
         batch_size: int,
     ) -> None:
-        self.lstm_inputs = lstm_inputs
+        self.recurrent_inputs = recurrent_inputs
         self.eval_inputs = eval_inputs
         self.outputs = outputs
 
-        self.num_groups = len(lstm_inputs)
-        self.group_size = lstm_inputs[0].shape[0]
+        self.num_groups = len(recurrent_inputs)
+        self.group_size = recurrent_inputs[0].shape[0]
 
         self.batch_size = batch_size
 
@@ -30,16 +30,16 @@ class RaggedSequence(Sequence):
         generator: Generator,
         batch_size: int,
     ) -> "RaggedSequence":
-        lstm_inputs = []
+        recurrent_inputs = []
         eval_inputs = []
         outputs = []
 
         for inputs, output in generator:
-            lstm_inputs.append(inputs["lstm_input"])
+            recurrent_inputs.append(inputs["recurrent_input"])
             eval_inputs.append(inputs["eval_input"])
             outputs.append(output)
 
-        return RaggedSequence(lstm_inputs, eval_inputs, outputs, batch_size)
+        return RaggedSequence(recurrent_inputs, eval_inputs, outputs, batch_size)
 
     def __len__(self) -> int:
         """
@@ -69,7 +69,7 @@ class RaggedSequence(Sequence):
         end_shot = start_shot + self.batch_size
 
         inputs = dict(
-            lstm_input=self.lstm_inputs[group][start_shot:end_shot],
+            recurrent_input=self.recurrent_inputs[group][start_shot:end_shot],
             eval_input=self.eval_inputs[group][start_shot:end_shot],
         )
 

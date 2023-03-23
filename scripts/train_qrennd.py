@@ -6,11 +6,18 @@ import random
 import numpy as np
 import tensorflow as tf
 
-from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
+from qrennd import (
+    Config,
+    Layout,
+    set_coords,
+    get_callbacks,
+    get_model,
+    load_datasets,
+)
 
 # %%
 # Parameters
-LAYOUT_FILE = "d3_rotated_layout.yaml"
+LAYOUT_FILE = "d5_rotated_layout.yaml"
 CONFIG_FILE = "base_config_google_d5.yaml"
 
 USERNAME = os.environ.get("USER")
@@ -28,6 +35,7 @@ CONFIG_DIR = SCRIPT_DIR / "configs"
 # %%
 # Load setup objects
 layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
+set_coords(layout)
 config = Config.from_yaml(
     filepath=CONFIG_DIR / CONFIG_FILE,
     data_dir=DATA_DIR,
@@ -49,12 +57,16 @@ train_data = load_datasets(config=config, layout=layout, dataset_name="train")
 val_data = load_datasets(config=config, layout=layout, dataset_name="dev")
 
 # %%
-seq_size = len(layout.get_qubits(role="anc"))
+if config.model["ConvLSTM"]:
+    seq_size = (1, layout.distance + 1, layout.distance + 1)
+else:
+    seq_size = (len(layout.get_qubits(role="anc")),)
 
 if config.dataset["input"] == "measurements":
     vec_size = len(layout.get_qubits(role="data"))
 else:
-    vec_size = int(0.5 * seq_size)
+    vec_size = len(layout.get_qubits(role="anc")) // 2
+
 
 model = get_model(
     seq_size=seq_size,
