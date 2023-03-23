@@ -1,12 +1,7 @@
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
-from .preprocessing import (
-    to_defects,
-    to_measurements,
-    to_syndromes,
-    to_prob_defects,
-)
+from .preprocessing import to_defect_probs, to_defects, to_measurements, to_syndromes
 from .sequences import RaggedSequence
 
 
