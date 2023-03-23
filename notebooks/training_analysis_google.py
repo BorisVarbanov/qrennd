@@ -148,7 +148,7 @@ config = Config.from_yaml(
 )
 
 # %%
-if "ConvLSTM_units" in config.model:
+if config.model["ConvLSTM"]:
     seq_size = (1, layout.distance + 1, layout.distance + 1)
 else:
     seq_size = (len(layout.get_qubits(role="anc")),)
