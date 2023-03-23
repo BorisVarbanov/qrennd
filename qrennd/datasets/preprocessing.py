@@ -107,6 +107,77 @@ def get_defect_probs(anc_probs: xr.DataArray) -> xr.DataArray:
     return defect_probs
 
 
+def get_final_defect_probs(
+    anc_probs: xr.DataArray,
+    data_probs: xr.DataArray,
+    proj_mat: xr.DataArray,
+) -> xr.DataArray:
+    """
+    get_final_defect_probs Calculates the final
+    defect probabilities.
+
+    Parameters
+    ----------
+    anc_probs : xr.DataArray
+        The probabilities of each ancilla qubits being in a given state (0 or 1)
+        over each round of the experiment.
+    data_probs : xr.DataArray
+        The probabilities of each data qubits being in a given state (0 or 1)
+        at the end of the experiment.
+    proj_mat : xr.DataArray
+        The projection matrix mapping the data qubits to the qubits that stabilize them (for
+        the basis that the experiment is done in).
+
+    Returns
+    -------
+    xr.DataArray
+        The final defect probabilities.
+    """
+    round_shift = 1 if anc_probs.meas_reset else 2
+    comp_rounds = anc_probs.qec_round[-round_shift:]
+    comp_probs = anc_probs.sel(qec_round=comp_rounds)
+
+    # Relabel to detector for concatenation later on
+    # This was the smartest way I cound figure how to do this in xarray
+    # Other option was to just
+    comp_probs = comp_probs.rename(qec_round="detector")
+    _data_probs = data_probs.rename(data_qubit="detector")
+    _proj_mat = proj_mat.rename(data_qubit="detector")
+
+    stab_qubits = proj_mat.anc_qubit.values
+    shots = data_probs.shot.values
+
+    data = np.zeros((shots.size, stab_qubits.size))
+    final_defect_probs = xr.DataArray(
+        data,
+        dims=["shot", "anc_qubit"],
+        coords=dict(shot=shots, anc_qubit=stab_qubits),
+    )
+
+    for ind, stab_qubit in enumerate(stab_qubits):
+        proj_vec = _proj_mat.sel(anc_qubit=stab_qubit)
+        data_det_probs = _data_probs.where(proj_vec, drop=True)
+
+        anc_det_probs = comp_probs.sel(anc_qubit=stab_qubit)
+
+        probs = xr.concat((data_det_probs, anc_det_probs), dim="detector")
+
+        products = product((0, 1), repeat=probs.detector.size)
+        odd_products = filter(odd_parity, products)
+        combinations = xr.DataArray(
+            list(odd_products),
+            dims=["ind", "detector"],
+            coords=dict(detector=probs.detector),
+        )
+
+        comb_probs = xr.where(combinations, probs.sel(state=1), probs.sel(state=0))
+
+        stab_defect_probs = comb_probs.prod(dim="detector").sum(dim="ind")
+        final_defect_probs[..., ind] = stab_defect_probs
+
+    return final_defect_probs
+
+
 def to_measurements(
     dataset: xr.Dataset,
 ):
@@ -236,58 +307,23 @@ def to_defect_probs(
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     """
-    anc_meas = dataset.anc_meas.transpose(..., "qec_round", "anc_qubit")
-    data_meas = dataset.data_meas.transpose(..., "data_qubit")
-
-    num_shots, _, _ = anc_meas.shape
-
     # Get Gaussian params
     means = np.array([-1, 1])
     dev = dev_from_error(means, float(dataset.error_prob))
 
     rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
 
-    samples = rng.normal(means, dev, size=(*anc_meas.shape, 2))
-    anc_outcomes = xr.where(anc_meas, samples[..., 1], samples[..., 0])
+    samples = rng.normal(means, dev, size=(*dataset.anc_meas.shape, 2))
+    anc_outcomes = xr.where(dataset.anc_meas, samples[..., 1], samples[..., 0])
 
     anc_probs = get_state_probs(anc_outcomes, means, dev)
     defect_probs = get_defect_probs(anc_probs)
 
-    samples = rng.normal(means, dev, size=(*data_meas.shape, 2))
-    data_outcomes = xr.where(data_meas, samples[..., 1], samples[..., 0])
+    samples = rng.normal(means, dev, size=(*dataset.data_meas.shape, 2))
+    data_outcomes = xr.where(dataset.data_meas, samples[..., 1], samples[..., 0])
 
     data_probs = get_state_probs(data_outcomes, means, dev)
-
-    # final defects
-    stab_qubits = proj_mat.anc_qubit.values
-    data = np.zeros((num_shots, len(stab_qubits)))
-
-    for ind, anc_qubit in enumerate(stab_qubits):
-        # select measurement probabilities of the given detector
-        sel_round = dataset.qec_round.values[-1]
-
-        proj_vec = proj_mat.sel(anc_qubit=anc_qubit)
-
-        proj_probs = data_probs.where(proj_vec, drop=True)
-        anc_prob = anc_probs.sel(anc_qubit=anc_qubit, qec_round=sel_round)
-
-        probs = np.concatenate((proj_probs.values, anc_prob.values[..., None]), axis=-1)
-
-        num_qubits = proj_probs.data_qubit.size + 1
-        products = product((0, 1), repeat=num_qubits)
-        odd_products = filter(odd_parity, products)
-        combinations = np.array(list(odd_products))
-
-        comb_probs = np.where(combinations[:, None], probs[1], probs[0])
-        defect_prob = np.sum(np.prod(comb_probs, axis=-1), axis=0)
-
-        data[:, ind] = defect_prob
-
-    final_defect_probs = xr.DataArray(
-        data=data,
-        dims=["shot", "anc_qubit"],
-        coords=dict(shot=dataset.shot, anc_qubit=stab_qubits),
-    )
+    final_defect_probs = get_final_defect_probs(anc_probs, data_probs, proj_mat)
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
