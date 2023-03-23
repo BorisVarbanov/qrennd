@@ -1,16 +1,22 @@
 from itertools import product
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
+import xarray as xr
 from scipy.special import erfcinv
-from xarray import DataArray, Dataset
 
 
 def odd_parity(bits):
     return sum(bits) % 2
 
 
-def get_syndromes(anc_meas: DataArray) -> DataArray:
+def norm_pdf(x: np.ndarray, means: List[float], dev: float):
+    y = np.subtract(x, means) / dev
+    prob = np.exp(-(y**2) / 2) / np.sqrt(2 * np.pi)
+    return prob / dev
+
+
+def get_syndromes(anc_meas: xr.DataArray) -> xr.DataArray:
     if anc_meas.meas_reset:
         return anc_meas
 
@@ -19,7 +25,9 @@ def get_syndromes(anc_meas: DataArray) -> DataArray:
     return syndromes
 
 
-def get_defects(syndromes: DataArray, frame: Optional[DataArray] = None) -> DataArray:
+def get_defects(
+    syndromes: xr.DataArray, frame: Optional[xr.DataArray] = None
+) -> xr.DataArray:
     shifted_syn = syndromes.shift(qec_round=1, fill_value=0)
 
     if frame is not None:
@@ -29,7 +37,9 @@ def get_defects(syndromes: DataArray, frame: Optional[DataArray] = None) -> Data
     return defects
 
 
-def get_final_defects(syndromes: DataArray, proj_syndrome: DataArray) -> DataArray:
+def get_final_defects(
+    syndromes: xr.DataArray, proj_syndrome: xr.DataArray
+) -> xr.DataArray:
     last_round = syndromes.qec_round.values[-1]
     anc_qubits = proj_syndrome.anc_qubit.values
 
@@ -38,8 +48,28 @@ def get_final_defects(syndromes: DataArray, proj_syndrome: DataArray) -> DataArr
     return defects
 
 
+def get_state_probs(
+    outcomes: xr.DataArray, means: List[float], dev: float
+) -> xr.DataArray:
+    probs_gen = (norm_pdf(outcomes, mean, dev) for mean in means)
+    outcome_probs = xr.concat(probs_gen, dim="state")
+    outcome_probs = outcome_probs.assign_coords(state=[0, 1])
+    state_probs = outcome_probs / outcome_probs.sum(dim="state")
+    return state_probs
+
+
+def get_defect_probs(anc_probs: xr.DataArray) -> xr.DataArray:
+    round_shift = 1 if anc_probs.meas_reset else 2
+
+    shifted_probs = anc_probs.shift(qec_round=round_shift)
+    prod_product = anc_probs.dot(shifted_probs, dims="state")
+    no_defect_probs = prod_product.fillna(anc_probs.sel(state=0))
+
+    return 1 - no_defect_probs
+
+
 def to_measurements(
-    dataset: Dataset,
+    dataset: xr.Dataset,
 ):
     """
     Preprocess dataset to generate measurement inputs
@@ -70,8 +100,8 @@ def to_measurements(
 
 
 def to_syndromes(
-    dataset: Dataset,
-    proj_mat: DataArray,
+    dataset: xr.Dataset,
+    proj_mat: xr.DataArray,
 ):
     """
     Preprocess dataset to generate syndrome inputs
@@ -107,8 +137,8 @@ def to_syndromes(
 
 
 def to_defects(
-    dataset: Dataset,
-    proj_mat: DataArray,
+    dataset: xr.Dataset,
+    proj_mat: xr.DataArray,
 ):
     """
     Preprocess dataset to generate defect inputs
@@ -145,23 +175,9 @@ def to_defects(
     return inputs, outputs
 
 
-def norm_pdf(x, loc, scale):
-    y = np.subtract(x, loc) / scale
-    prob = np.exp(-(y**2) / 2) / np.sqrt(2 * np.pi)
-    return prob / scale
-
-
-def state_probs(outcomes, means, dev):
-    outcome_probs = norm_pdf(outcomes[..., None], means, dev)
-    outcome_probs = np.moveaxis(outcome_probs, -1, 0)
-
-    state_probs = outcome_probs / np.sum(outcome_probs, axis=0)
-    return state_probs
-
-
-def to_prob_defects(
-    dataset: Dataset,
-    proj_mat: DataArray,
+def to_defect_probs(
+    dataset: xr.Dataset,
+    proj_mat: xr.DataArray,
 ):
     """
     Preprocess dataset to generate the probability of defect
@@ -184,8 +200,7 @@ def to_prob_defects(
     anc_meas = dataset.anc_meas.transpose(..., "qec_round", "anc_qubit")
     data_meas = dataset.data_meas.transpose(..., "data_qubit")
 
-    num_shots, _, num_anc = anc_meas.shape
-    round_shift = 1 if dataset.meas_reset else 2
+    num_shots, _, _ = anc_meas.shape
 
     # Get Gaussian params
     means = np.array([-1, 1])
@@ -195,30 +210,15 @@ def to_prob_defects(
     rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
 
     samples = rng.normal(means, dev, size=(*anc_meas.shape, 2))
-    outcomes = np.where(anc_meas.values, samples[..., 1], samples[..., 0])
+    anc_outcomes = xr.where(anc_meas, samples[..., 1], samples[..., 0])
 
-    anc_probs = DataArray(
-        data=state_probs(outcomes, means, dev),
-        dims=("state", *anc_meas.dims),
-        coords=dict(state=[0, 1], **anc_meas.coords),
-    )
-
-    # defect probabilities
-    defect_probs = anc_probs[0] * anc_probs[1].shift(
-        qec_round=round_shift, fill_value=0
-    )
-    defect_probs += anc_probs[1] * anc_probs[0].shift(
-        qec_round=round_shift, fill_value=1
-    )
+    anc_probs = get_state_probs(anc_outcomes, means, dev)
+    defect_probs = get_defect_probs(anc_probs)
 
     samples = rng.normal(means, dev, size=(*data_meas.shape, 2))
-    outcomes = np.where(data_meas.values, samples[..., 1], samples[..., 0])
+    data_outcomes = np.where(data_meas.values, samples[..., 1], samples[..., 0])
 
-    data_probs = DataArray(
-        data=state_probs(outcomes, means, dev),
-        dims=("state", *data_meas.dims),
-        coords=dict(state=[0, 1], **data_meas.coords),
-    )
+    data_probs = get_state_probs(data_outcomes, means, dev)
 
     # final defects
     stab_qubits = proj_mat.anc_qubit.values
@@ -245,7 +245,7 @@ def to_prob_defects(
 
         data[:, ind] = defect_prob
 
-    final_defect_probs = DataArray(
+    final_defect_probs = xr.DataArray(
         data=data,
         dims=["shot", "anc_qubit"],
         coords=dict(shot=dataset.shot, anc_qubit=stab_qubits),
