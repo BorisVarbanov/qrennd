@@ -46,6 +46,9 @@ config.log_dir.mkdir(exist_ok=True, parents=True)
 config.checkpoint_dir.mkdir(exist_ok=True, parents=True)
 
 # %%
+config.to_yaml(config.run_dir / "config.yaml")
+
+# %%
 # set random seed for tensorflow, numpy and python
 random.seed(config.seed)
 np.random.seed(config.seed)
@@ -76,9 +79,6 @@ model = get_model(
 
 # %%
 callbacks = get_callbacks(config)
-
-# %%
-config.to_yaml(config.run_dir / "config.yaml")
 
 # %%
 history = model.fit(
