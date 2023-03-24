@@ -1,7 +1,7 @@
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
-from .preprocessing import to_defects, to_measurements, to_model_input, to_syndromes
+from .preprocessing import to_defect_probs, to_defects, to_measurements, to_model_input, to_syndromes
 from .sequences import RaggedSequence
 
 
@@ -29,10 +29,12 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         processed_gen = (to_syndromes(dataset, proj_matrix) for dataset in dataset_gen)
     elif input_type == "defects":
         processed_gen = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
+    elif input_type == "prob_defects":
+        processed_gen = (to_defect_probs(dataset, proj_matrix) for dataset in dataset_gen)
     else:
         raise ValueError(
             f"Unknown input data type {input_type}, the possible "
-            "options are 'measurements', 'syndromes', 'defects' and 'MWPM'."
+            "options are 'measurements', 'syndromes', 'defects' and 'prob_defects'."
         )
 
     # Process for keras.model input
