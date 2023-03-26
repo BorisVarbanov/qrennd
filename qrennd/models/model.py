@@ -69,6 +69,9 @@ def get_model(
         name="eval_input",
     )
 
+    inputs = [recurrent_input, eval_input]
+    outputs = []
+
     if conv_config := config.model["ConvLSTM"]:
         # Get ConvLSTM layers
         filters = conv_config["filters"]
@@ -111,6 +114,32 @@ def get_model(
         for layer in lstm_layers:
             recurrent_output = layer(recurrent_output)
 
+    if config.model["decode"]:
+        prev_ouputs = recurrent_output[:, :-1]
+        last_output = recurrent_output[:, -1]
+
+        units = np.prod(seq_size)
+        dense_layer = keras.layers.Dense(
+            units=units,
+            activation="sigmoid",
+            name="rec_decoder",
+        )
+
+        decoder_layer = keras.layers.TimeDistributed(dense_layer)
+
+        recurrent_predictions = decoder_layer(prev_ouputs)
+        outputs.append(recurrent_predictions)
+
+        eval_decoder_layer = keras.layers.Dense(
+            units=vec_size,
+            activation="sigmoid",
+            name="eval_decoder",
+        )
+        eval_prediction = eval_decoder_layer(last_output)
+        outputs.append(eval_prediction)
+    else:
+        last_output = recurrent_output
+
     # Get evaluation layers
     config_eval = config.model["eval"]
     units = config_eval["units"]
@@ -130,19 +159,21 @@ def get_model(
         name="aux",
     )
     # Apply evaluation layers
-    main_input = concat((recurrent_output, eval_input), axis=1)
+    main_input = concat((last_output, eval_input), axis=1)
     main_output = next(main_eval_layers)(main_input)
     for layer in main_eval_layers:
         main_output = layer(main_output)
+    outputs.append(main_output)
 
-    aux_output = next(aux_eval_layers)(recurrent_output)
+    aux_output = next(aux_eval_layers)(last_output)
     for layer in aux_eval_layers:
         aux_output = layer(aux_output)
+    outputs.append(aux_output)
 
     # Compile model
     model = keras.Model(
-        inputs=[recurrent_input, eval_input],
-        outputs=[main_output, aux_output],
+        inputs=inputs,
+        outputs=outputs,
         name=name or "decoder_model",
     )
 
