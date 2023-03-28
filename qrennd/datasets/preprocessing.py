@@ -333,10 +333,4 @@ def to_defect_probs(
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
-    inputs = dict(
-        lstm_input=defect_probs.values,
-        eval_input=final_defect_probs.values,
-    )
-    outputs = log_errors.values
-
-    return inputs, outputs
+    return defect_probs, final_defect_probs, log_errors
