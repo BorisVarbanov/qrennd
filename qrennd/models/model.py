@@ -1,9 +1,9 @@
 """The 2-layer LSTM RNN model use for the decoder."""
 from itertools import repeat
-from typing import Callable, Dict, List, Optional, Union
+from typing import List, Optional
 
 import numpy as np
-from tensorflow import concat, keras
+from tensorflow import keras
 
 from ..configs import Config
 
@@ -12,11 +12,7 @@ def get_model(
     seq_size: List[int],
     vec_size: int,
     config: Config,
-    optimizer: Optional[str] = None,
-    loss: Optional[Dict[str, Union[str, Callable]]] = None,
-    loss_weights: Optional[Dict[str, float]] = None,
-    metrics: Optional[Dict[str, str]] = None,
-    name: Optional[str] = None,
+    name: str = "decoder",
 ) -> keras.Model:
     """
     get_model Returns the RNN decoder model.
@@ -39,29 +35,18 @@ def get_model(
             learning_rate - the learning rate of the Adam optimizer.
             dropout_rate - the dropout rate used after each LSTM layer and the hidden evaluation layer.
             l2_factor - the weight decay factor used to regularize the weights of the hidden evaluation layer.
-    metrics : Optional[Dict[str, str]], optional
-        Optional dictionary specifying the list of built-in metric names to be evaluatted by each model head during
-        trainig and testing, by default None
-    loss : Optional[Dict[str, Union[str, Callable]]], optional
-        Optional dictionary of loss functions given as strings (name of the loss function) or
-        functiton (Callable) for each head, by default None
-    loss_weights : Optional[Dict[str, float]], optional
-        Optional dictionary specifying the scalar coefficients (floats) to weight
-        the loss contribution of each head output, by default None
-    optimizer : Optional[str], optional
-        The model optimizer given as a string (name of optimizer) or optimizer instance, by default None
-    name : Optional[str], optional
-        The name of the model, by default None
+    name : str, optional
+        The name of the model, by default 'decoder'
 
     Returns
     -------
     tensorflow.keras.Model
         The build and compiled model.
     """
-    recurrent_input = keras.layers.Input(
+    rec_input = keras.layers.Input(
         shape=(None, *seq_size),
         dtype="float32",
-        name="recurrent_input",
+        name="rec_input",
     )
     eval_input = keras.layers.Input(
         shape=(vec_size,),
@@ -69,135 +54,139 @@ def get_model(
         name="eval_input",
     )
 
-    inputs = [recurrent_input, eval_input]
+    inputs = [rec_input, eval_input]
     outputs = []
 
-    if conv_config := config.model["ConvLSTM"]:
+    if network_config := config.model["ConvLSTM"]:
         # Get ConvLSTM layers
-        filters = conv_config["filters"]
-        dropout_rates = conv_config.get("dropout_rates")
-        kernel_sizes = conv_config["kernel_sizes"]
-        convlstm_layers = conv_lstm_network(
-            layer_filters=filters,
-            kernel_sizes=kernel_sizes,
-            dropout_rates=dropout_rates,
-            return_sequences=config.model["LSTM"],
+        return_sequences = any((config.model["LSTM"], config.model["rec_decoder"]))
+        lstm_layers = conv_lstm_network(
+            name="ConvLSTM",
+            return_sequences=return_sequences,
+            **network_config,
         )
         # Apply ConvLSTM layers
-        conv_output = next(convlstm_layers)(recurrent_input)
-        for layer in convlstm_layers:
-            conv_output = layer(conv_output)
+        rec_output = next(lstm_layers)(rec_input)
+        for layer in lstm_layers:
+            rec_output = layer(rec_output)
 
         # Reshape for next layer
-        if config.model["LSTM"]:
-            reshape_layer = keras.layers.Reshape(
-                (-1, np.product(conv_output.shape[2:]))
-            )
-            lstm_input = reshape_layer(conv_output)
+        if return_sequences:
+            new_shape = (-1, np.product(rec_output.shape[2:]))
+            reshape_layer = keras.layers.Reshape(new_shape, name="reshape")
+            rec_output = reshape_layer(rec_output)
         else:
-            flatten_layer = keras.layers.Flatten()
-            recurrent_output = flatten_layer(conv_output)
+            flatten_layer = keras.layers.Flatten(name="conv_flatten")
+            last_output = flatten_layer(rec_output)
     else:
-        # No ConvLSTM layers
-        lstm_input = recurrent_input
+        rec_output = rec_input
 
-    if config_lstm := config.model["LSTM"]:
+    if encoder_config := config.model["rec_encoder"]:
+        encoder_layers = dense_network(
+            name="rec_encoder",
+            activation="relu",
+            **encoder_config,
+        )
+        for layer in encoder_layers:
+            rec_output = layer(rec_output)
+
+    if network_config := config.model["LSTM"]:
         # Get LSTM layers
-        units = config_lstm["units"]
-        dropout_rates = config_lstm.get("dropout_rates")
+        return_sequences = config.model["rec_decoder"] is not None
         lstm_layers = lstm_network(
-            layer_units=units,
-            dropout_rates=dropout_rates,
+            name="LSTM",
+            return_sequences=return_sequences,
+            **network_config,
         )
         # Apply ConvLSTM layers
-        recurrent_output = next(lstm_layers)(lstm_input)
         for layer in lstm_layers:
-            recurrent_output = layer(recurrent_output)
+            rec_output = layer(rec_output)
+        if return_sequences:
+            lambda_layer = keras.layers.Lambda(lambda x: x[:, -1], name="last_seq")
+            last_output = lambda_layer(rec_output)
+        else:
+            last_output = rec_output
 
-    if config.model["decode"]:
-        prev_ouputs = recurrent_output[:, :-1]
-        last_output = recurrent_output[:, -1]
+    if decoder_config := config.model["rec_decoder"]:
+        crop_layer = keras.layers.Cropping1D(cropping=(0, 1), name="crop")
+        prev_outputs = crop_layer(rec_output)
 
-        units = np.prod(seq_size)
-        dense_layer = keras.layers.Dense(
-            units=units,
-            activation="sigmoid",
+        decoder_layers = dense_network(
             name="rec_decoder",
+            activation="relu",
+            final_activation="sigmoid",
+            **decoder_config,
         )
+        rec_predictions = next(decoder_layers)(prev_outputs)
+        for layer in decoder_layers:
+            rec_predictions = layer(rec_predictions)
 
-        decoder_layer = keras.layers.TimeDistributed(dense_layer)
+        flatten_layer = keras.layers.Flatten(name="pred_flatten")
+        rec_predictions = flatten_layer(rec_predictions)
+        outputs.append(rec_predictions)
 
-        recurrent_predictions = decoder_layer(prev_ouputs)
-        outputs.append(recurrent_predictions)
-
-        eval_decoder_layer = keras.layers.Dense(
-            units=vec_size,
-            activation="sigmoid",
+    if decoder_config := config.model["eval_decoder"]:
+        decoder_layers = dense_network(
             name="eval_decoder",
+            activation="relu",
+            final_activation="sigmoid",
+            **decoder_config,
         )
-        eval_prediction = eval_decoder_layer(last_output)
+        eval_prediction = next(decoder_layers)(last_output)
+        for layer in decoder_layers:
+            eval_prediction = layer(eval_prediction)
         outputs.append(eval_prediction)
+
+    if encoder_config := config.model["eval_encoder"]:
+        encoder_layers = dense_network(
+            name="eval_encoder",
+            activation="relu",
+            **encoder_config,
+        )
+        _eval_input = next(encoder_layers)(eval_input)
+        for layer in encoder_layers:
+            _eval_input = layer(_eval_input)
     else:
-        last_output = recurrent_output
+        _eval_input = eval_input
 
-    # Get evaluation layers
-    config_eval = config.model["eval"]
-    units = config_eval["units"]
-    l2_factor = config_eval.get("l2_factor")
-    dropout_rates = config_eval.get("dropout_rate")
+    concat_layer = keras.layers.Concatenate(axis=1, name="concat")
+    main_input = concat_layer((last_output, _eval_input))
 
-    main_eval_layers = evaluation_network(
-        layer_units=units,
-        dropout_rates=dropout_rates,
-        l2_factor=l2_factor,
-        name="main",
+    eval_layers = dense_network(
+        name="main_eval",
+        activation="relu",
+        final_activation="sigmoid",
+        **config.model["main_eval"],
     )
-    aux_eval_layers = evaluation_network(
-        layer_units=units,
-        dropout_rates=dropout_rates,
-        l2_factor=l2_factor,
-        name="aux",
-    )
-    # Apply evaluation layers
-    main_input = concat((last_output, eval_input), axis=1)
-    main_output = next(main_eval_layers)(main_input)
-    for layer in main_eval_layers:
+    main_output = next(eval_layers)(main_input)
+    for layer in eval_layers:
         main_output = layer(main_output)
     outputs.append(main_output)
 
-    aux_output = next(aux_eval_layers)(last_output)
-    for layer in aux_eval_layers:
+    eval_layers = dense_network(
+        name="aux_eval",
+        activation="relu",
+        final_activation="sigmoid",
+        **config.model["aux_eval"],
+    )
+    aux_output = next(eval_layers)(last_output)
+    for layer in eval_layers:
         aux_output = layer(aux_output)
     outputs.append(aux_output)
 
     # Compile model
-    model = keras.Model(
-        inputs=inputs,
-        outputs=outputs,
-        name=name or "decoder_model",
-    )
+    model = keras.Model(inputs=inputs, outputs=outputs, name=name)
 
-    if optimizer is None:
-        opt_params = config.train.get("optimizer")
-        if opt_params is not None:
-            optimizer = keras.optimizers.Adam(**opt_params)
-        else:
-            optimizer = keras.optimizers.Adam()
-
-    if loss is None:
-        loss = config.train.get("loss")
-
-    if loss_weights is None:
-        loss_weights = config.train.get("loss_weights")
-
-    if metrics is None:
-        metrics = config.train.get("metrics")
+    if opt_params := config.train["optimizer"]:
+        optimizer = keras.optimizers.Adam(**opt_params)
+    else:
+        optimizer = "adam"
 
     model.compile(
         optimizer=optimizer,
-        loss=loss,
-        loss_weights=loss_weights,
-        metrics=metrics,
+        loss=config.train["loss"],
+        loss_weights=config.train["loss_weights"],
+        metrics=config.train["metrics"],
     )
 
     # Load initial weights for the model if necessary
@@ -210,54 +199,60 @@ def get_model(
             raise ValueError(
                 "Invalid initial weights in configuration file."
             ) from error
-
     return model
 
 
 def lstm_network(
-    layer_units: List[int],
+    name: str,
+    units: List[int],
+    activation: Optional[str] = None,
     dropout_rates: Optional[List[float]] = None,
+    return_sequences: bool = False,
 ):
-    num_layers = len(layer_units)
+    num_layers = len(units)
     if dropout_rates is None:
-        dropout_rates = list(repeat(None, len(layer_units)))
+        dropout_rates = list(repeat(None, num_layers))
 
     if len(dropout_rates) != num_layers:
         raise ValueError(
             f"Mismatch between the number of LSTM layers ({num_layers})"
             "and the number of LSTM dropout rate after each layer."
         )
-    inds = range(1, num_layers + 1)
 
-    for ind, units, rate in zip(inds, layer_units, dropout_rates):
+    inds = range(1, num_layers + 1)
+    for ind, layer_units, rate in zip(inds, units, dropout_rates):
+        return_layer_sequences = (ind != num_layers) or return_sequences
         lstm_layer = keras.layers.LSTM(
-            units=units,
-            return_sequences=ind != num_layers,
-            name=f"LSTM_{ind}",
+            units=layer_units,
+            return_sequences=return_layer_sequences,
+            name=f"{name}{ind}",
         )
         yield lstm_layer
 
-        if rate is not None:
+        if rate:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
-                name=f"dropout_LSTM_{ind}",
+                name=f"dropout_{name}{ind}",
             )
             yield dropout_layer
 
-    act_layer = keras.layers.Activation(
-        activation="relu",
-        name="relu_lstm",
-    )
-    yield act_layer
+    if activation:
+        activation_layer = keras.layers.Activation(
+            activation=activation,
+            name=f"{activation}_{name}",
+        )
+        yield activation_layer
 
 
 def conv_lstm_network(
-    layer_filters: List[int],
+    name: str,
+    filters: List[int],
     kernel_sizes: List[int],
+    activation: Optional[str] = None,
     dropout_rates: Optional[List[float]] = None,
-    return_sequences: Optional[bool] = False,
+    return_sequences: bool = False,
 ):
-    num_layers = len(layer_filters)
+    num_layers = len(filters)
     if dropout_rates is None:
         dropout_rates = list(repeat(None, num_layers))
 
@@ -273,39 +268,43 @@ def conv_lstm_network(
         )
 
     inds = range(1, num_layers + 1)
-    for ind, filters, rate, kernel_size in zip(
-        inds, layer_filters, dropout_rates, kernel_sizes
-    ):
+    for layer_params in zip(inds, filters, dropout_rates, kernel_sizes):
+        ind, layer_filters, rate, size = layer_params
+        return_layer_sequences = (ind != num_layers) or return_sequences
         convlstm_layer = keras.layers.ConvLSTM2D(
-            filters=filters,
-            kernel_size=kernel_size,
+            filters=layer_filters,
+            kernel_size=size,
             data_format="channels_first",
-            return_sequences=(ind != num_layers) or return_sequences,
-            name=f"ConvLSTM_{ind}",
+            return_sequences=return_layer_sequences,
+            name=f"{name}{ind}",
         )
         yield convlstm_layer
 
-        if rate is not None:
+        if rate:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
-                name=f"dropout_ConvLSTM_{ind}",
+                name=f"dropout_{name}{ind}",
             )
             yield dropout_layer
 
-    act_layer = keras.layers.Activation(
-        activation="relu",
-        name="relu_convlstm",
-    )
-    yield act_layer
+    if activation:
+        activation_layer = keras.layers.Activation(
+            activation=activation,
+            name=f"{activation}_{name}",
+        )
+        yield activation_layer
 
 
-def evaluation_network(
-    layer_units: List[int],
+def dense_network(
+    name: str,
+    units: List[int],
+    activation: str,
     dropout_rates: Optional[List[float]] = None,
     l2_factor: Optional[float] = None,
-    name: Optional[str] = "eval",
+    final_activation: Optional[str] = None,
 ):
-    num_layers = len(layer_units)
+    num_layers = len(units)
+
     if dropout_rates is None:
         dropout_rates = list(repeat(None, num_layers))
 
@@ -315,32 +314,25 @@ def evaluation_network(
             "and the number of ConvLSTM dropout rate after each layer."
         )
 
-    if l2_factor is not None:
-        regularizer = keras.regularizers.L2(l2_factor)
-    else:
-        regularizer = None
-
     inds = range(1, num_layers + 1)
-    for ind, units, rate in zip(inds, layer_units, dropout_rates):
+    for ind, layer_units, rate in zip(inds, units, dropout_rates):
+        kernel_regularizer = keras.regularizers.L2(l2_factor) if l2_factor else None
+        if ind == num_layers:
+            layer_activation = final_activation or activation
+        else:
+            layer_activation = activation
+
         dense_layer = keras.layers.Dense(
-            units=units,
-            activation="relu",
-            kernel_regularizer=regularizer,
-            name=f"{name}_dense_{ind}",
+            units=layer_units,
+            activation=layer_activation,
+            kernel_regularizer=kernel_regularizer,
+            name=f"{name}{ind}",
         )
         yield dense_layer
 
         if rate is not None:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
-                name=f"dropout_{name}_dense_{ind}",
+                name=f"dropout_{name}{ind}",
             )
             yield dropout_layer
-
-    # Final evaluation layer
-    output_layer = keras.layers.Dense(
-        units=1,
-        activation="sigmoid",
-        name=f"{name}_output",
-    )
-    yield output_layer
