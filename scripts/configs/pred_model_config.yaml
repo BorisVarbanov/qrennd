@@ -56,6 +56,7 @@ model:
   LSTM:
     units: [64, 64]
     dropout_rates: [null, null]
+    activation: relu
   rec_decoder:
     units: [32, 8]
     dropout_rates: [null, null]

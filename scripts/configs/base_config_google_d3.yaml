@@ -79,15 +79,11 @@ dataset:
 train:
   optimizer:
     learning_rate: 0.0005
-  loss:
-    main_output: binary_crossentropy
-    aux_output: binary_crossentropy
+  loss: binary_crossentropy
   loss_weights:
     main_output: 1.0
     aux_output: 0.5
-  metrics:
-    main_output: accuracy
-    aux_output: accuracy
+  metrics: accuracy
   callbacks:
     early_stop:
       monitor: val_loss
@@ -106,18 +102,23 @@ train:
 
 model:
   rec_encoder: null
-  eval_encode: null
+  eval_encoder: null
   ConvLSTM: null
   LSTM:
     units: [64, 64]
     dropout_rates: [null, 0.05]
+    activation: relu
   rec_decoder: null
   eval_decoder: null
   main_eval:
     units: [64, 1]
     dropout_rates: [0.05, null]
     l2_factor: null
+    activation: relu
+    final_activation: sigmoid
   aux_eval:
     units: [64, 1]
     dropout_rates: [0.05, null]
     l2_factor: null
+    activation: relu
+    final_activation: sigmoid
