@@ -64,10 +64,10 @@ model:
   rec_decoder: null
   eval_decoder: null
   main_eval:
-    units: [64]
-    dropout_rates: [null]
+    units: [64, 1]
+    dropout_rates: [null, null]
     l2_factor: null
   aux_eval:
-    units: [64]
-    dropout_rates: [null]
+    units: [64, 1]
+    dropout_rates: [null, null]
     l2_factor: null
