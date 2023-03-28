@@ -82,11 +82,7 @@ def get_model(
         rec_output = rec_input
 
     if encoder_config := config.model["rec_encoder"]:
-        encoder_layers = dense_network(
-            name="rec_encoder",
-            activation="relu",
-            **encoder_config,
-        )
+        encoder_layers = dense_network(name="rec_encoder", **encoder_config)
         for layer in encoder_layers:
             rec_output = layer(rec_output)
 
@@ -111,12 +107,7 @@ def get_model(
         crop_layer = keras.layers.Cropping1D(cropping=(0, 1), name="crop")
         prev_outputs = crop_layer(rec_output)
 
-        decoder_layers = dense_network(
-            name="rec_decoder",
-            activation="relu",
-            final_activation="sigmoid",
-            **decoder_config,
-        )
+        decoder_layers = dense_network(name="rec_decoder", **decoder_config)
         rec_predictions = next(decoder_layers)(prev_outputs)
         for layer in decoder_layers:
             rec_predictions = layer(rec_predictions)
@@ -126,23 +117,14 @@ def get_model(
         outputs.append(rec_predictions)
 
     if decoder_config := config.model["eval_decoder"]:
-        decoder_layers = dense_network(
-            name="eval_decoder",
-            activation="relu",
-            final_activation="sigmoid",
-            **decoder_config,
-        )
+        decoder_layers = dense_network(name="eval_decoder", **decoder_config)
         eval_prediction = next(decoder_layers)(last_output)
         for layer in decoder_layers:
             eval_prediction = layer(eval_prediction)
         outputs.append(eval_prediction)
 
     if encoder_config := config.model["eval_encoder"]:
-        encoder_layers = dense_network(
-            name="eval_encoder",
-            activation="relu",
-            **encoder_config,
-        )
+        encoder_layers = dense_network(name="eval_encoder", **encoder_config)
         _eval_input = next(encoder_layers)(eval_input)
         for layer in encoder_layers:
             _eval_input = layer(_eval_input)
@@ -152,23 +134,13 @@ def get_model(
     concat_layer = keras.layers.Concatenate(axis=1, name="concat")
     main_input = concat_layer((last_output, _eval_input))
 
-    eval_layers = dense_network(
-        name="main_eval",
-        activation="relu",
-        final_activation="sigmoid",
-        **config.model["main_eval"],
-    )
+    eval_layers = dense_network(name="main_eval", **config.model["main_eval"])
     main_output = next(eval_layers)(main_input)
     for layer in eval_layers:
         main_output = layer(main_output)
     outputs.append(main_output)
 
-    eval_layers = dense_network(
-        name="aux_eval",
-        activation="relu",
-        final_activation="sigmoid",
-        **config.model["aux_eval"],
-    )
+    eval_layers = dense_network(name="aux_eval", **config.model["aux_eval"])
     aux_output = next(eval_layers)(last_output)
     for layer in eval_layers:
         aux_output = layer(aux_output)
