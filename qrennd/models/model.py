@@ -127,21 +127,30 @@ def get_model(
         for layer in eval_network:
             eval_prediction = layer(eval_prediction)
 
-        concat_layer = keras.layers.Concatenate(axis=1, name="pred_concat")
+        concat_layer = keras.layers.Concatenate(axis=1, name="predictions")
         predictions = concat_layer((rec_predictions, eval_prediction))
+
         outputs.append(predictions)
 
     concat_layer = keras.layers.Concatenate(axis=1, name="eval_concat")
     main_input = concat_layer((last_output, eval_output))
 
     eval_config = config.model["eval"]
-    main_network = dense_network(name="main_eval", **eval_config["main"])
+    main_network = dense_network(
+        name="main_eval",
+        output_name="main_output",
+        **eval_config["main"],
+    )
     main_output = next(main_network)(main_input)
     for layer in main_network:
         main_output = layer(main_output)
     outputs.append(main_output)
 
-    aux_network = dense_network(name="aux_eval", **eval_config["aux"])
+    aux_network = dense_network(
+        name="aux_eval",
+        output_name="aux_output",
+        **eval_config["aux"],
+    )
     aux_output = next(aux_network)(last_output)
     for layer in aux_network:
         aux_output = layer(aux_output)
@@ -274,6 +283,7 @@ def dense_network(
     activation: str,
     dropout_rates: Optional[List[float]] = None,
     l2_factor: Optional[float] = None,
+    output_name: Optional[str] = None,
     final_activation: Optional[str] = None,
 ):
     num_layers = len(units)
@@ -292,20 +302,22 @@ def dense_network(
         kernel_regularizer = keras.regularizers.L2(l2_factor) if l2_factor else None
         if ind == num_layers:
             layer_activation = final_activation or activation
+            layer_name = output_name or f"{name}-{ind}"
         else:
             layer_activation = activation
+            layer_name = f"{name}-{ind}"
 
         dense_layer = keras.layers.Dense(
             units=layer_units,
             activation=layer_activation,
             kernel_regularizer=kernel_regularizer,
-            name=f"{name}{ind}",
+            name=layer_name,
         )
         yield dense_layer
 
         if rate is not None:
             dropout_layer = keras.layers.Dropout(
                 rate=rate,
-                name=f"dropout_{name}{ind}",
+                name=f"dropout_{layer_name}",
             )
             yield dropout_layer
