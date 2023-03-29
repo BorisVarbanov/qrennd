@@ -1,7 +1,7 @@
 from math import floor
 from typing import Dict, Generator, List, Tuple, TypeVar
 
-from numpy import ndarray
+import numpy as np
 from tensorflow.keras.utils import Sequence
 
 RaggedSeq = TypeVar("RaggedSeq", bound="RaggedSequence")
@@ -10,36 +10,45 @@ RaggedSeq = TypeVar("RaggedSeq", bound="RaggedSequence")
 class RaggedSequence(Sequence):
     def __init__(
         self,
-        recurrent_inputs: List[ndarray],
-        eval_inputs: List[ndarray],
-        outputs: List[ndarray],
+        rec_inputs: List[np.ndarray],
+        eval_inputs: List[np.ndarray],
+        log_errors: List[np.ndarray],
         batch_size: int,
+        predict_defects: bool = False,
     ) -> None:
-        self.recurrent_inputs = recurrent_inputs
+        self.rec_inputs = rec_inputs
         self.eval_inputs = eval_inputs
-        self.outputs = outputs
+        self.log_errors = log_errors
 
-        self.num_groups = len(recurrent_inputs)
-        self.group_size = recurrent_inputs[0].shape[0]
+        self.num_groups = len(rec_inputs)
+        self.group_size = rec_inputs[0].shape[0]
 
         self.batch_size = batch_size
+        self.predict = predict_defects
 
     @classmethod
     def from_generator(
         cls: RaggedSeq,
         generator: Generator,
         batch_size: int,
+        predict_defects: bool,
     ) -> "RaggedSequence":
-        recurrent_inputs = []
+        rec_inputs = []
         eval_inputs = []
-        outputs = []
+        log_errors = []
 
-        for inputs, output in generator:
-            recurrent_inputs.append(inputs["recurrent_input"])
-            eval_inputs.append(inputs["eval_input"])
-            outputs.append(output)
+        for rec_input, eval_input, log_error in generator:
+            rec_inputs.append(rec_input)
+            eval_inputs.append(eval_input)
+            log_errors.append(log_error)
 
-        return RaggedSequence(recurrent_inputs, eval_inputs, outputs, batch_size)
+        return RaggedSequence(
+            rec_inputs,
+            eval_inputs,
+            log_errors,
+            batch_size,
+            predict_defects,
+        )
 
     def __len__(self) -> int:
         """
@@ -52,7 +61,9 @@ class RaggedSequence(Sequence):
         """
         return self.num_groups * floor(self.group_size / self.batch_size)
 
-    def __getitem__(self, index: int) -> Tuple[Dict[str, ndarray], ndarray]:
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
         __getitem__ Returns a single batch of the dataset
 
@@ -68,10 +79,20 @@ class RaggedSequence(Sequence):
         start_shot = batch_ind * self.batch_size
         end_shot = start_shot + self.batch_size
 
-        inputs = dict(
-            recurrent_input=self.recurrent_inputs[group][start_shot:end_shot],
-            eval_input=self.eval_inputs[group][start_shot:end_shot],
-        )
+        rec_inputs = self.rec_inputs[group][start_shot:end_shot]
+        eval_inputs = self.eval_inputs[group][start_shot:end_shot]
 
-        outputs = self.outputs[group][start_shot:end_shot]
+        inputs = dict(rec_input=rec_inputs, eval_input=eval_inputs)
+
+        log_errors = self.log_errors[group][start_shot:end_shot]
+
+        if self.predict:
+            rec_predictions = rec_inputs[:, 1:].reshape(self.batch_size, -1)
+            predictions = np.concatenate((rec_predictions, eval_inputs), axis=1)
+            outputs = dict(
+                predictions=predictions, main_output=log_errors, aux_output=log_errors
+            )
+            return inputs, outputs
+
+        outputs = dict(main_output=log_errors, aux_output=log_errors)
         return inputs, outputs
