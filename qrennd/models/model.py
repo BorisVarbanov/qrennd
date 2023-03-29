@@ -59,7 +59,7 @@ def get_model(
 
     if network_config := config.model["ConvLSTM"]:
         # Get ConvLSTM layers
-        return_sequences = any((config.model["LSTM"], config.model["rec_decoder"]))
+        return_sequences = any((config.model["LSTM"], config.model["decoder"]))
         lstm_layers = conv_lstm_network(
             name="ConvLSTM",
             return_sequences=return_sequences,
@@ -81,14 +81,21 @@ def get_model(
     else:
         rec_output = rec_input
 
-    if encoder_config := config.model["rec_encoder"]:
-        encoder_layers = dense_network(name="rec_encoder", **encoder_config)
-        for layer in encoder_layers:
+    if encoder_config := config.model["encoder"]:
+        rec_network = dense_network(name="rec_encoder", **encoder_config["rec"])
+        for layer in rec_network:
             rec_output = layer(rec_output)
+
+        eval_network = dense_network(name="eval_encoder", **encoder_config["eval"])
+        eval_output = next(eval_network)(eval_input)
+        for layer in eval_network:
+            eval_output = layer(eval_output)
+    else:
+        eval_output = eval_input
 
     if network_config := config.model["LSTM"]:
         # Get LSTM layers
-        return_sequences = config.model["rec_decoder"] is not None
+        return_sequences = config.model["decoder"] is not None
         lstm_layers = lstm_network(
             name="LSTM",
             return_sequences=return_sequences,
@@ -103,46 +110,40 @@ def get_model(
         else:
             last_output = rec_output
 
-    if decoder_config := config.model["rec_decoder"]:
+    if decoder_config := config.model["decoder"]:
         crop_layer = keras.layers.Cropping1D(cropping=(0, 1), name="crop")
         prev_outputs = crop_layer(rec_output)
 
-        decoder_layers = dense_network(name="rec_decoder", **decoder_config)
-        rec_predictions = next(decoder_layers)(prev_outputs)
-        for layer in decoder_layers:
+        rec_network = dense_network(name="rec_decoder", **decoder_config["rec"])
+        rec_predictions = next(rec_network)(prev_outputs)
+        for layer in rec_network:
             rec_predictions = layer(rec_predictions)
 
-        flatten_layer = keras.layers.Flatten(name="pred_flatten")
+        flatten_layer = keras.layers.Flatten(name="rec_flatten")
         rec_predictions = flatten_layer(rec_predictions)
-        outputs.append(rec_predictions)
 
-    if decoder_config := config.model["eval_decoder"]:
-        decoder_layers = dense_network(name="eval_decoder", **decoder_config)
-        eval_prediction = next(decoder_layers)(last_output)
-        for layer in decoder_layers:
+        eval_network = dense_network(name="eval_decoder", **decoder_config["eval"])
+        eval_prediction = next(eval_network)(last_output)
+        for layer in eval_network:
             eval_prediction = layer(eval_prediction)
-        outputs.append(eval_prediction)
 
-    if encoder_config := config.model["eval_encoder"]:
-        encoder_layers = dense_network(name="eval_encoder", **encoder_config)
-        _eval_input = next(encoder_layers)(eval_input)
-        for layer in encoder_layers:
-            _eval_input = layer(_eval_input)
-    else:
-        _eval_input = eval_input
+        concat_layer = keras.layers.Concatenate(axis=1, name="pred_concat")
+        predictions = concat_layer((rec_predictions, eval_prediction))
+        outputs.append(predictions)
 
-    concat_layer = keras.layers.Concatenate(axis=1, name="concat")
-    main_input = concat_layer((last_output, _eval_input))
+    concat_layer = keras.layers.Concatenate(axis=1, name="eval_concat")
+    main_input = concat_layer((last_output, eval_output))
 
-    eval_layers = dense_network(name="main_eval", **config.model["main_eval"])
-    main_output = next(eval_layers)(main_input)
-    for layer in eval_layers:
+    eval_config = config.model["eval"]
+    main_network = dense_network(name="main_eval", **eval_config["main"])
+    main_output = next(main_network)(main_input)
+    for layer in main_network:
         main_output = layer(main_output)
     outputs.append(main_output)
 
-    eval_layers = dense_network(name="aux_eval", **config.model["aux_eval"])
-    aux_output = next(eval_layers)(last_output)
-    for layer in eval_layers:
+    aux_network = dense_network(name="aux_eval", **eval_config["aux"])
+    aux_output = next(aux_network)(last_output)
+    for layer in aux_network:
         aux_output = layer(aux_output)
     outputs.append(aux_output)
 
