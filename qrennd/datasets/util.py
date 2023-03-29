@@ -1,12 +1,19 @@
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
-from .preprocessing import to_defect_probs, to_defects, to_measurements, to_model_input, to_syndromes
+from .preprocessing import (
+    to_defect_probs,
+    to_defects,
+    to_measurements,
+    to_model_input,
+    to_syndromes,
+)
 from .sequences import RaggedSequence
 
 
 def load_datasets(config: Config, layout: Layout, dataset_name: str):
     batch_size = config.train["batch_size"]
+    predict_defects = config.model["decoder"] is not None
     experiment_name = config.dataset["folder_format_name"]
 
     rot_basis = config.dataset["rot_basis"]
@@ -30,7 +37,9 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     elif input_type == "defects":
         processed_gen = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
     elif input_type == "prob_defects":
-        processed_gen = (to_defect_probs(dataset, proj_matrix) for dataset in dataset_gen)
+        processed_gen = (
+            to_defect_probs(dataset, proj_matrix) for dataset in dataset_gen
+        )
     else:
         raise ValueError(
             f"Unknown input data type {input_type}, the possible "
@@ -39,9 +48,6 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
 
     # Process for keras.model input
     exp_matrix = layout.expansion_matrix() if config.model["ConvLSTM"] else None
-    input_gen = (
-        to_model_input(lstm_inputs, eval_inputs, log_errors, exp_matrix)
-        for lstm_inputs, eval_inputs, log_errors in processed_gen
-    )
+    input_gen = (to_model_input(*data_arrs, exp_matrix) for data_arrs in processed_gen)
 
-    return RaggedSequence.from_generator(input_gen, batch_size)
+    return RaggedSequence.from_generator(input_gen, batch_size, predict_defects)
