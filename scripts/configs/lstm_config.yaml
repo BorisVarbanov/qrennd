@@ -1,0 +1,65 @@
+metadata:
+  experiment: 20230320-d3_rot-css-surface_circ-level_p0.001
+  run: example-train
+  init_weights: null
+
+dataset:
+  train:
+    shots: 250000
+    rounds: !range [1, 40, 2]
+    states: [0, 1]
+
+  dev:
+    shots: 25000
+    rounds: !range [1, 40, 2]
+    states: [0, 1]
+
+  test:
+    shots: 20000
+    rounds: !range [1, 20, 2]
+    states: [0, 1]
+
+  rot_basis: false
+  folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}_p0.001"
+  input: "defects"
+
+train:
+  optimizer:
+    learning_rate: 0.0001
+  loss: binary_crossentropy
+  loss_weights:
+    predictions: 1.0
+    main_output: 1.0
+    aux_output: 0.5
+  metrics: accuracy
+  callbacks:
+    early_stop:
+      monitor: val_loss
+      mode: min
+      min_delta: 0
+      patience: 10
+    csv_log:
+      append: false
+    checkpoint:
+      monitor: val_loss
+      mode: min
+      save_best_only: true
+
+  epochs: 500
+  batch_size: 64
+
+model:
+  type: LSTM
+
+  LSTM:
+    units: [64, 64]
+    dropout_rates: [null, null]
+
+  main_eval:
+    units: [64, 1]
+    dropout_rates: [null, null]
+    l2_factor: null
+  aux_eval:
+    units: [64, 1]
+    dropout_rates: [null, null]
+    l2_factor: null
