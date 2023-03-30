@@ -13,7 +13,8 @@ from .sequences import RaggedSequence
 
 def load_datasets(config: Config, layout: Layout, dataset_name: str):
     batch_size = config.train["batch_size"]
-    predict_defects = config.model["decoder"] is not None
+    model_type = config.model["type"]
+    predict_defects = model_type == "LSTM_decoder"
     experiment_name = config.dataset["folder_format_name"]
 
     rot_basis = config.dataset["rot_basis"]
@@ -47,7 +48,7 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         )
 
     # Process for keras.model input
-    exp_matrix = layout.expansion_matrix() if config.model["ConvLSTM"] else None
+    exp_matrix = layout.expansion_matrix() if model_type == "ConvLSTM" else None
     input_gen = (to_model_input(*data_arrs, exp_matrix) for data_arrs in processed_gen)
 
     return RaggedSequence.from_generator(input_gen, batch_size, predict_defects)
