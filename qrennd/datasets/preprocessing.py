@@ -272,14 +272,15 @@ def to_model_input(
     eval_inputs: xr.DataArray,
     log_errors: xr.DataArray,
     expansion_matrix: Optional[xr.DataArray] = None,
+    data_type: Optional = bool,
 ):
     if expansion_matrix is not None:
         expanded_inputs = recurrent_inputs @ expansion_matrix
-        recurrent_input = expanded_inputs.values.astype(bool)
+        recurrent_input = expanded_inputs.values.astype(data_type)
     else:
-        recurrent_input = recurrent_inputs.values.astype(bool)
+        recurrent_input = recurrent_inputs.values.astype(data_type)
 
-    eval_input = eval_inputs.values.astype(bool)
+    eval_input = eval_inputs.values.astype(data_type)
 
     inputs = dict(
         recurrent_input=recurrent_input,

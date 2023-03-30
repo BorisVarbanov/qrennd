@@ -1,7 +1,13 @@
 from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
-from .preprocessing import to_defect_probs, to_defects, to_measurements, to_model_input, to_syndromes
+from .preprocessing import (
+    to_defect_probs,
+    to_defects,
+    to_measurements,
+    to_model_input,
+    to_syndromes,
+)
 from .sequences import RaggedSequence
 
 
@@ -30,7 +36,9 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     elif input_type == "defects":
         processed_gen = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
     elif input_type == "prob_defects":
-        processed_gen = (to_defect_probs(dataset, proj_matrix) for dataset in dataset_gen)
+        processed_gen = (
+            to_defect_probs(dataset, proj_matrix) for dataset in dataset_gen
+        )
     else:
         raise ValueError(
             f"Unknown input data type {input_type}, the possible "
@@ -39,8 +47,9 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
 
     # Process for keras.model input
     exp_matrix = layout.expansion_matrix() if config.model["ConvLSTM"] else None
+    data_type = float if config.dataset["input"] == "prob_defects" else bool
     input_gen = (
-        to_model_input(lstm_inputs, eval_inputs, log_errors, exp_matrix)
+        to_model_input(lstm_inputs, eval_inputs, log_errors, exp_matrix, data_type)
         for lstm_inputs, eval_inputs, log_errors in processed_gen
     )
 
