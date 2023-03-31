@@ -294,6 +294,7 @@ def to_model_input(
 def to_defect_probs(
     dataset: xr.Dataset,
     proj_mat: xr.DataArray,
+    assign_error: Optional[float] = None,
 ):
     """
     Preprocess dataset to generate the probability of defect
@@ -313,9 +314,12 @@ def to_defect_probs(
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     """
+    if assign_error is None:
+        assign_error = float(dataset.error_prob)
+
     # Get Gaussian params
     means = np.array([-1, 1])
-    dev = dev_from_error(means, float(dataset.error_prob))
+    dev = dev_from_error(means, assign_error)
 
     rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
 

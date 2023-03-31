@@ -19,6 +19,7 @@ import stim
 EXP_NAME = "20230310-d3_rot-sruf_circ-level_meas-reset"
 MODEL_FOLDER = "MWPM"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
+DATASET_NAME = "test_MWPM_assign0-005"
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -114,13 +115,14 @@ config = Config.from_yaml(
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-if not (DIR / f"test_results.nc").exists():
+FILE_NAME = DATASET_NAME + "_results.nc"
+if not (DIR / FILE_NAME).exists():
     print("Evaluating MWPM...")
 
-    log_fid = evaluate_MWPM(config, layout, f"test")
-    log_fid.to_netcdf(path=DIR / f"test_results.nc")
+    log_fid = evaluate_MWPM(config, layout, DATASET_NAME)
+    log_fid.to_netcdf(path=DIR / FILE_NAME)
 
-log_fid = xr.load_dataset(DIR / f"test_results.nc")
+log_fid = xr.load_dataset(DIR / FILE_NAME)
 
 # %%
 model_decay = LogicalFidelityDecay()
@@ -134,7 +136,7 @@ ax.set_ylabel("logical fidelity")
 ax.set_title("MWPM")
 fig = ax.get_figure()
 fig.tight_layout()
-fig.savefig(DIR / "log-fid_vs_QEC-round.pdf", format="pdf")
+fig.savefig(DIR / f"{DATASET_NAME}_log-fid_vs_QEC-round.pdf", format="pdf")
 plt.show()
 
 # %%

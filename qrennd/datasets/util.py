@@ -36,8 +36,10 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     elif input_type == "defects":
         processed_gen = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
     elif input_type == "prob_defects":
+        assign_error = config.dataset.get("assign_error")
         processed_gen = (
-            to_defect_probs(dataset, proj_matrix) for dataset in dataset_gen
+            to_defect_probs(dataset, proj_matrix, assign_error)
+            for dataset in dataset_gen
         )
     else:
         raise ValueError(
