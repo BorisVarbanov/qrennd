@@ -1,4 +1,4 @@
-from math import floor
+from math import ceil
 from typing import Dict, Generator, List, Tuple, TypeVar
 
 import numpy as np
@@ -22,6 +22,8 @@ class RaggedSequence(Sequence):
 
         self.num_groups = len(rec_inputs)
         self.group_size = rec_inputs[0].shape[0]
+
+        self.num_batches = ceil(self.group_size / batch_size)
 
         self.batch_size = batch_size
         self.predict = predict_defects
@@ -59,7 +61,7 @@ class RaggedSequence(Sequence):
         int
             Number of batches per epoch
         """
-        return self.num_groups * floor(self.group_size / self.batch_size)
+        return self.num_groups * self.num_batches
 
     def __getitem__(
         self, index: int
@@ -76,8 +78,14 @@ class RaggedSequence(Sequence):
         group = index % self.num_groups
 
         batch_ind = index // self.num_groups
+
         start_shot = batch_ind * self.batch_size
-        end_shot = start_shot + self.batch_size
+        if batch_ind == (self.num_batches - 1):
+            end_shot = self.group_size
+        else:
+            end_shot = start_shot + self.batch_size
+
+        num_shots = end_shot - start_shot
 
         rec_inputs = self.rec_inputs[group][start_shot:end_shot]
         eval_inputs = self.eval_inputs[group][start_shot:end_shot]
@@ -87,7 +95,7 @@ class RaggedSequence(Sequence):
         log_errors = self.log_errors[group][start_shot:end_shot]
 
         if self.predict:
-            rec_predictions = rec_inputs[:, 1:].reshape(self.batch_size, -1)
+            rec_predictions = rec_inputs[:, 1:].reshape(num_shots, -1)
             predictions = np.concatenate((rec_predictions, eval_inputs), axis=1)
             outputs = dict(
                 predictions=predictions, main_output=log_errors, aux_output=log_errors
