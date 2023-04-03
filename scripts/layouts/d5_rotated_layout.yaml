@@ -1,0 +1,384 @@
+description: null
+interaction_order: null
+layout:
+- freq_group: low
+  neighbors:
+    south_east: X3
+    south_west: Z1
+  qubit: D1
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: X1
+    south_east: Z2
+    south_west: X3
+  qubit: D2
+  role: data
+- freq_group: low
+  neighbors:
+    north_west: X1
+    south_east: X4
+    south_west: Z2
+  qubit: D3
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: X2
+    south_east: Z3
+    south_west: X4
+  qubit: D4
+  role: data
+- freq_group: low
+  neighbors:
+    north_west: X2
+    south_west: Z3
+  qubit: D5
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: X3
+    north_west: Z1
+    south_east: Z4
+  qubit: D6
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: Z2
+    north_west: X3
+    south_east: X5
+    south_west: Z4
+  qubit: D7
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: X4
+    north_west: Z2
+    south_east: Z5
+    south_west: X5
+  qubit: D8
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: Z3
+    north_west: X4
+    south_east: X6
+    south_west: Z5
+  qubit: D9
+  role: data
+- freq_group: high
+  neighbors:
+    north_west: Z3
+    south_east: Z6
+    south_west: X6
+  qubit: D10
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: Z4
+    south_east: X7
+    south_west: Z7
+  qubit: D11
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: X5
+    north_west: Z4
+    south_east: Z8
+    south_west: X7
+  qubit: D12
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: Z5
+    north_west: X5
+    south_east: X8
+    south_west: Z8
+  qubit: D13
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: X6
+    north_west: Z5
+    south_east: Z9
+    south_west: X8
+  qubit: D14
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: Z6
+    north_west: X6
+    south_west: Z9
+  qubit: D15
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: X7
+    north_west: Z7
+    south_east: Z10
+  qubit: D16
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: Z8
+    north_west: X7
+    south_east: X9
+    south_west: Z10
+  qubit: D17
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: X8
+    north_west: Z8
+    south_east: Z11
+    south_west: X9
+  qubit: D18
+  role: data
+- freq_group: high
+  neighbors:
+    north_east: Z9
+    north_west: X8
+    south_east: X10
+    south_west: Z11
+  qubit: D19
+  role: data
+- freq_group: high
+  neighbors:
+    north_west: Z9
+    south_east: Z12
+    south_west: X10
+  qubit: D20
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: Z10
+    south_east: X11
+  qubit: D21
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: X9
+    north_west: Z10
+    south_west: X11
+  qubit: D22
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: Z11
+    north_west: X9
+    south_east: X12
+  qubit: D23
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: X10
+    north_west: Z11
+    south_west: X12
+  qubit: D24
+  role: data
+- freq_group: low
+  neighbors:
+    north_east: Z12
+    north_west: X10
+  qubit: D25
+  role: data
+- freq_group: mid
+  neighbors:
+    south_east: D3
+    south_west: D2
+  qubit: X1
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    south_east: D5
+    south_west: D4
+  qubit: X2
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D2
+    north_west: D1
+    south_east: D7
+    south_west: D6
+  qubit: X3
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D4
+    north_west: D3
+    south_east: D9
+    south_west: D8
+  qubit: X4
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D8
+    north_west: D7
+    south_east: D13
+    south_west: D12
+  qubit: X5
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D10
+    north_west: D9
+    south_east: D15
+    south_west: D14
+  qubit: X6
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D12
+    north_west: D11
+    south_east: D17
+    south_west: D16
+  qubit: X7
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D14
+    north_west: D13
+    south_east: D19
+    south_west: D18
+  qubit: X8
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D18
+    north_west: D17
+    south_east: D23
+    south_west: D22
+  qubit: X9
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D20
+    north_west: D19
+    south_east: D25
+    south_west: D24
+  qubit: X10
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D22
+    north_west: D21
+  qubit: X11
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D24
+    north_west: D23
+  qubit: X12
+  role: anc
+  stab_type: x_type
+- freq_group: mid
+  neighbors:
+    north_east: D1
+    south_east: D6
+  qubit: Z1
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D3
+    north_west: D2
+    south_east: D8
+    south_west: D7
+  qubit: Z2
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D5
+    north_west: D4
+    south_east: D10
+    south_west: D9
+  qubit: Z3
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D7
+    north_west: D6
+    south_east: D12
+    south_west: D11
+  qubit: Z4
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D9
+    north_west: D8
+    south_east: D14
+    south_west: D13
+  qubit: Z5
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_west: D10
+    south_west: D15
+  qubit: Z6
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D11
+    south_east: D16
+  qubit: Z7
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D13
+    north_west: D12
+    south_east: D18
+    south_west: D17
+  qubit: Z8
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D15
+    north_west: D14
+    south_east: D20
+    south_west: D19
+  qubit: Z9
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D17
+    north_west: D16
+    south_east: D22
+    south_west: D21
+  qubit: Z10
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_east: D19
+    north_west: D18
+    south_east: D24
+    south_west: D23
+  qubit: Z11
+  role: anc
+  stab_type: z_type
+- freq_group: mid
+  neighbors:
+    north_west: D20
+    south_west: D25
+  qubit: Z12
+  role: anc
+  stab_type: z_type
+name: Distance-5 rotated surface code layout
