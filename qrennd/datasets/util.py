@@ -8,10 +8,15 @@ from .preprocessing import (
     to_model_input,
     to_syndromes,
 )
-from .sequences import RaggedSequence
+from .sequences import RaggedSequence, Sequence
 
 
-def load_datasets(config: Config, layout: Layout, dataset_name: str):
+def load_datasets(
+    config: Config,
+    layout: Layout,
+    dataset_name: str,
+    concat: bool = True,
+):
     batch_size = config.train["batch_size"]
     model_type = config.model["type"]
     predict_defects = model_type == "LSTM_decoder"
@@ -51,4 +56,8 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
     exp_matrix = layout.expansion_matrix() if model_type == "ConvLSTM" else None
     input_gen = (to_model_input(*data_arrs, exp_matrix) for data_arrs in processed_gen)
 
-    return RaggedSequence.from_generator(input_gen, batch_size, predict_defects)
+    if concat:
+        return RaggedSequence.from_generator(input_gen, batch_size, predict_defects)
+
+    sequences = (Sequence(*tensors) for tensors in input_gen)
+    return sequences
