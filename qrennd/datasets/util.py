@@ -10,12 +10,12 @@ from .preprocessing import (
 )
 from .sequences import RaggedSequence, Sequence
 
+
 def load_datasets(
     config: Config,
     layout: Layout,
     dataset_name: str,
     concat: bool = True,
-    data_type: type = bool,
 ):
     batch_size = config.train["batch_size"]
     model_type = config.model["type"]
