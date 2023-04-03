@@ -59,5 +59,7 @@ def load_datasets(
     if concat:
         return RaggedSequence.from_generator(input_gen, batch_size, predict_defects)
 
-    sequences = (Sequence(*tensors) for tensors in input_gen)
+    sequences = (
+        Sequence(*tensors, batch_size, predict_defects) for tensors in input_gen
+    )
     return sequences

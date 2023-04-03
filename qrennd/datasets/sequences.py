@@ -109,19 +109,21 @@ class RaggedSequence(BaseSequence):
 class Sequence(BaseSequence):
     def __init__(
         self,
-        lstm_inputs: np.ndarray,
-        eval_inputs: np.ndarray,
-        outputs: np.ndarray,
+        rec_input: np.ndarray,
+        eval_input: np.ndarray,
+        log_errors: np.ndarray,
         batch_size: int,
+        predict_defects: bool = False,
     ) -> None:
-        self.lstm_inputs = lstm_inputs
-        self.eval_inputs = eval_inputs
-        self.outputs = outputs
+        self.rec_input = rec_input
+        self.eval_input = eval_input
+        self.log_errors = log_errors
 
-        self.seq_size = len(lstm_inputs)
+        self.seq_size = len(rec_input)
         self.num_batches = ceil(self.seq_size / batch_size)
 
         self.batch_size = batch_size
+        self.predict = predict_defects
 
     def __len__(self) -> int:
         """
@@ -146,22 +148,22 @@ class Sequence(BaseSequence):
         """
         start_shot = index * self.batch_size
         if index == (self.num_batches - 1):
-            end_shot = self.group_size
+            end_shot = self.seq_size
         else:
             end_shot = start_shot + self.batch_size
 
         num_shots = end_shot - start_shot
 
-        rec_inputs = self.rec_inputs[start_shot:end_shot]
-        eval_inputs = self.eval_inputs[start_shot:end_shot]
+        rec_input = self.rec_input[start_shot:end_shot]
+        eval_input = self.eval_input[start_shot:end_shot]
 
-        inputs = dict(rec_input=rec_inputs, eval_input=eval_inputs)
+        inputs = dict(rec_input=rec_input, eval_input=eval_input)
 
         log_errors = self.log_errors[start_shot:end_shot]
 
         if self.predict:
-            rec_predictions = rec_inputs[:, 1:].reshape(num_shots, -1)
-            predictions = np.concatenate((rec_predictions, eval_inputs), axis=1)
+            rec_predictions = rec_input[:, 1:].reshape(num_shots, -1)
+            predictions = np.concatenate((rec_predictions, eval_input), axis=1)
             outputs = dict(
                 predictions=predictions, main_output=log_errors, aux_output=log_errors
             )
