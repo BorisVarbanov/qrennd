@@ -16,6 +16,7 @@ def load_datasets(
     layout: Layout,
     dataset_name: str,
     concat: bool = True,
+    data_type: type = bool,
 ):
     batch_size = config.train["batch_size"]
     model_type = config.model["type"]
@@ -54,7 +55,8 @@ def load_datasets(
 
     # Process for keras.model input
     exp_matrix = layout.expansion_matrix() if model_type == "ConvLSTM" else None
-    input_gen = (to_model_input(*data_arrs, exp_matrix) for data_arrs in processed_gen)
+    data_type = float if input_type == "prob_defects" else bool
+    input_gen = (to_model_input(*arrs, exp_matrix, data_type) for arrs in processed_gen)
 
     if concat:
         return RaggedSequence.from_generator(input_gen, batch_size, predict_defects)

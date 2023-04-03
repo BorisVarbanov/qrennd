@@ -272,16 +272,17 @@ def to_model_input(
     eval_inputs: xr.DataArray,
     log_errors: xr.DataArray,
     expansion_matrix: Optional[xr.DataArray] = None,
+    data_type: type = bool,
 ):
     if expansion_matrix is not None:
         expanded_inputs = rec_inputs @ expansion_matrix
-        rec_tensor = expanded_inputs.values.astype(bool)
+        rec_tensor = expanded_inputs.values.astype(data_type)
     else:
-        rec_tensor = rec_inputs.values.astype(bool)
+        rec_tensor = rec_inputs.values.astype(data_type)
 
-    eval_tensor = eval_inputs.values.astype(bool)
+    eval_tensor = eval_inputs.values.astype(data_type)
 
-    error_tensor = log_errors.values.astype(bool)
+    error_tensor = log_errors.values.astype(data_type)
 
     return rec_tensor, eval_tensor, error_tensor
 
