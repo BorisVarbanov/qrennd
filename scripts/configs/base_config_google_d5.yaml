@@ -101,24 +101,18 @@ train:
   batch_size: 64
 
 model:
-  rec_encoder: null
-  eval_encoder: null
-  ConvLSTM: null
+  type: LSTM
+
   LSTM:
     units: [128, 128]
     dropout_rates: [null, 0.05]
-    activation: relu
-  rec_decoder: null
-  eval_decoder: null
+
   main_eval:
     units: [128, 1]
     dropout_rates: [0.05, null]
     l2_factor: null
-    activation: relu
-    final_activation: sigmoid
+
   aux_eval:
     units: [128, 1]
     dropout_rates: [0.05, null]
     l2_factor: null
-    activation: relu
-    final_activation: sigmoid
