@@ -8,7 +8,7 @@ opt_float = Union[float, None]
 Network = Iterator[keras.layers.Layer]
 
 
-def get_lstm_network(
+def lstm_network(
     name: str,
     units: List[int],
     dropout_rates: Optional[List[opt_float]] = None,
@@ -38,7 +38,7 @@ def get_lstm_network(
             yield dropout_layer
 
 
-def get_conv_lstm_network(
+def conv_lstm_network(
     name: str,
     filters: List[int],
     kernel_sizes: List[int],
@@ -80,7 +80,7 @@ def get_conv_lstm_network(
             yield dropout_layer
 
 
-def get_eval_network(
+def eval_network(
     name: str,
     units: List[int],
     dropout_rates: Optional[List[opt_float]] = None,
@@ -121,7 +121,7 @@ def get_eval_network(
             yield dropout_layer
 
 
-def get_decoder_network(
+def decoder_network(
     name: str,
     units: List[int],
     dropout_rates: Optional[List[opt_float]] = None,

@@ -4,12 +4,7 @@ import numpy as np
 from tensorflow import keras
 
 from ..configs import Config
-from .networks import (
-    get_conv_lstm_network,
-    get_decoder_network,
-    get_eval_network,
-    get_lstm_network,
-)
+from .networks import conv_lstm_network, decoder_network, eval_network, lstm_network
 
 DEFAULT_OPT_PARAMS = dict(learning_rate=0.001)
 
@@ -27,9 +22,9 @@ def lstm_model(rec_features: int, eval_features: int, config: Config) -> keras.M
     )
 
     lstm_params = config.model["LSTM"]
-    lstm_nework = get_lstm_network(name="LSTM", **lstm_params)
-    output = next(lstm_nework)(rec_input)
-    for layer in lstm_nework:
+    network = lstm_network(name="LSTM", **lstm_params)
+    output = next(network)(rec_input)
+    for layer in network:
         output = layer(output)
 
     activation_layer = keras.layers.Activation(
@@ -42,15 +37,15 @@ def lstm_model(rec_features: int, eval_features: int, config: Config) -> keras.M
     main_eval_input = concat_layer((output, eval_input))
 
     main_eval_params = config.model["main_eval"]
-    main_network = get_eval_network(name="main", **main_eval_params)
-    main_output = next(main_network)(main_eval_input)
-    for layer in main_network:
+    network = eval_network(name="main", **main_eval_params)
+    main_output = next(network)(main_eval_input)
+    for layer in network:
         main_output = layer(main_output)
 
     aux_eval_params = config.model["aux_eval"]
-    aux_network = get_eval_network(name="aux", **aux_eval_params)
-    aux_output = next(aux_network)(output)
-    for layer in aux_network:
+    network = eval_network(name="aux", **aux_eval_params)
+    aux_output = next(network)(output)
+    for layer in network:
         aux_output = layer(aux_output)
 
     inputs = [rec_input, eval_input]
@@ -95,13 +90,13 @@ def conv_lstm_model(
 
     conv_lstm_params = config.model["ConvLSTM"]
     return_sequences = config.model["LSTM"] is not None
-    conv_lstm_nework = get_conv_lstm_network(
+    network = conv_lstm_network(
         name="ConvLSTM",
         return_sequences=return_sequences,
         **conv_lstm_params,
     )
-    output = next(conv_lstm_nework)(rec_input)
-    for layer in conv_lstm_nework:
+    output = next(network)(rec_input)
+    for layer in network:
         output = layer(output)
 
     activation_layer = keras.layers.Activation(
@@ -115,8 +110,8 @@ def conv_lstm_model(
         reshape_layer = keras.layers.Reshape(new_shape, name="conv_reshape")
         output = reshape_layer(output)
 
-        lstm_nework = get_lstm_network(name="LSTM", **lstm_params)
-        for layer in lstm_nework:
+        network = lstm_network(name="LSTM", **lstm_params)
+        for layer in network:
             output = layer(output)
 
         activation_layer = keras.layers.Activation(
@@ -134,15 +129,15 @@ def conv_lstm_model(
     main_eval_input = concat_layer((output, eval_input))
 
     main_eval_params = config.model["main_eval"]
-    main_network = get_eval_network(name="main", **main_eval_params)
-    main_output = next(main_network)(main_eval_input)
-    for layer in main_network:
+    network = eval_network(name="main", **main_eval_params)
+    main_output = next(network)(main_eval_input)
+    for layer in network:
         main_output = layer(main_output)
 
     aux_eval_params = config.model["aux_eval"]
-    aux_network = get_eval_network(name="aux", **aux_eval_params)
-    aux_output = next(aux_network)(output)
-    for layer in aux_network:
+    network = eval_network(name="aux", **aux_eval_params)
+    aux_output = next(network)(output)
+    for layer in network:
         aux_output = layer(aux_output)
 
     inputs = [rec_input, eval_input]
@@ -186,9 +181,9 @@ def lstm_decoder_model(
     )
 
     lstm_params = config.model["LSTM"]
-    lstm_nework = get_lstm_network(name="LSTM", return_sequences=True, **lstm_params)
-    outputs = next(lstm_nework)(rec_input)
-    for layer in lstm_nework:
+    network = lstm_network(name="LSTM", return_sequences=True, **lstm_params)
+    outputs = next(network)(rec_input)
+    for layer in network:
         outputs = layer(outputs)
 
     lambda_layer = keras.layers.Lambda(lambda x: x[:, -1], name="last_sequence")
@@ -198,18 +193,18 @@ def lstm_decoder_model(
     prev_outputs = crop_layer(outputs)
 
     rec_decoder_params = config.model["rec_decoder"]
-    rec_network = get_decoder_network(name="main", **rec_decoder_params)
-    rec_predictions = next(rec_network)(prev_outputs)
-    for layer in rec_network:
+    network = decoder_network(name="main", **rec_decoder_params)
+    rec_predictions = next(network)(prev_outputs)
+    for layer in network:
         rec_predictions = layer(rec_predictions)
 
     flatten_layer = keras.layers.Flatten(name="flatten_predictions")
     rec_predictions = flatten_layer(rec_predictions)
 
     eval_decoder_params = config.model["eval_decoder"]
-    eval_network = get_decoder_network(name="eval", **eval_decoder_params)
-    eval_prediction = next(eval_network)(last_output)
-    for layer in eval_network:
+    network = decoder_network(name="eval", **eval_decoder_params)
+    eval_prediction = next(network)(last_output)
+    for layer in network:
         eval_prediction = layer(eval_prediction)
 
     concat_layer = keras.layers.Concatenate(axis=1, name="predictions")
@@ -219,15 +214,15 @@ def lstm_decoder_model(
     main_eval_input = concat_layer((last_output, eval_input))
 
     main_eval_params = config.model["main_eval"]
-    main_network = get_eval_network(name="main", **main_eval_params)
-    main_output = next(main_network)(main_eval_input)
-    for layer in main_network:
+    network = eval_network(name="main", **main_eval_params)
+    main_output = next(network)(main_eval_input)
+    for layer in network:
         main_output = layer(main_output)
 
     aux_eval_params = config.model["aux_eval"]
-    aux_network = get_eval_network(name="aux", **aux_eval_params)
-    aux_output = next(aux_network)(last_output)
-    for layer in aux_network:
+    network = eval_network(name="aux", **aux_eval_params)
+    aux_output = next(network)(last_output)
+    for layer in network:
         aux_output = layer(aux_output)
 
     inputs = [rec_input, eval_input]
