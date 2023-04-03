@@ -104,9 +104,9 @@ def eval_network(
     inds = range(1, num_layers + 1)
     for ind, layer_units, rate in zip(inds, units, dropout_rates):
 
-        output_layer = ind == num_layers
-        activation = output_activation if output_layer else activation
-        layer_name = f"{name}_output" if output_layer else f"{name}_eval-{ind}"
+        is_output = ind == num_layers
+        activation = output_activation if is_output else activation
+        layer_name = f"{name}_output" if is_output else f"{name}_eval-{ind}"
 
         dense_layer = keras.layers.Dense(
             units=layer_units,
@@ -116,7 +116,7 @@ def eval_network(
         )
         yield dense_layer
 
-        if rate and not output_layer:
+        if rate and not is_output:
             dropout_layer = keras.layers.Dropout(rate, name=f"dropout_{layer_name}")
             yield dropout_layer
 
@@ -145,9 +145,9 @@ def decoder_network(
     inds = range(1, num_layers + 1)
     for ind, layer_units, rate in zip(inds, units, dropout_rates):
 
-        output_layer = ind == num_layers
-        activation = output_activation if output_layer else activation
-        layer_name = f"{name}_prediction" if output_layer else f"{name}_dec-{ind}"
+        is_output = ind == num_layers
+        activation = output_activation if is_output else activation
+        layer_name = f"{name}_prediction" if is_output else f"{name}_dec-{ind}"
 
         dense_layer = keras.layers.Dense(
             units=layer_units,
@@ -157,6 +157,6 @@ def decoder_network(
         )
         yield dense_layer
 
-        if rate and not output_layer:
+        if rate and not is_output:
             dropout_layer = keras.layers.Dropout(rate, name=f"dropout_{layer_name}")
             yield dropout_layer
