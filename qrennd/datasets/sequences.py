@@ -102,8 +102,7 @@ class RaggedSequence(BaseSequence):
             )
             return inputs, outputs
 
-        outputs = dict(main_output=log_errors, aux_output=log_errors)
-        return inputs, outputs
+        return inputs, log_errors
 
 
 class Sequence(BaseSequence):
@@ -169,5 +168,4 @@ class Sequence(BaseSequence):
             )
             return inputs, outputs
 
-        outputs = dict(main_output=log_errors, aux_output=log_errors)
-        return inputs, outputs
+        return inputs, log_errors
