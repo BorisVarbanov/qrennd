@@ -8,11 +8,18 @@ from .preprocessing import (
     to_model_input,
     to_syndromes,
 )
-from .sequences import RaggedSequence
+from .sequences import RaggedSequence, Sequence
 
 
-def load_datasets(config: Config, layout: Layout, dataset_name: str):
+def load_datasets(
+    config: Config,
+    layout: Layout,
+    dataset_name: str,
+    concat: bool = True,
+):
     batch_size = config.train["batch_size"]
+    model_type = config.model["type"]
+    predict_defects = model_type == "LSTM_decoder"
     experiment_name = config.dataset["folder_format_name"]
 
     rot_basis = config.dataset["rot_basis"]
@@ -48,11 +55,14 @@ def load_datasets(config: Config, layout: Layout, dataset_name: str):
         )
 
     # Process for keras.model input
-    exp_matrix = layout.expansion_matrix() if config.model["ConvLSTM"] else None
-    data_type = float if config.dataset["input"] == "prob_defects" else bool
-    input_gen = (
-        to_model_input(lstm_inputs, eval_inputs, log_errors, exp_matrix, data_type)
-        for lstm_inputs, eval_inputs, log_errors in processed_gen
-    )
+    exp_matrix = layout.expansion_matrix() if model_type == "ConvLSTM" else None
+    data_type = float if input_type == "prob_defects" else bool
+    input_gen = (to_model_input(*arrs, exp_matrix, data_type) for arrs in processed_gen)
 
-    return RaggedSequence.from_generator(input_gen, batch_size)
+    if concat:
+        return RaggedSequence.from_generator(input_gen, batch_size, predict_defects)
+
+    sequences = (
+        Sequence(*tensors, batch_size, predict_defects) for tensors in input_gen
+    )
+    return sequences

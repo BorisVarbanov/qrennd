@@ -268,27 +268,23 @@ def to_defects(
 
 
 def to_model_input(
-    recurrent_inputs: xr.DataArray,
+    rec_inputs: xr.DataArray,
     eval_inputs: xr.DataArray,
     log_errors: xr.DataArray,
     expansion_matrix: Optional[xr.DataArray] = None,
-    data_type: Optional = bool,
+    data_type: type = bool,
 ):
     if expansion_matrix is not None:
-        expanded_inputs = recurrent_inputs @ expansion_matrix
-        recurrent_input = expanded_inputs.values.astype(data_type)
+        expanded_inputs = rec_inputs @ expansion_matrix
+        rec_tensor = expanded_inputs.values.astype(data_type)
     else:
-        recurrent_input = recurrent_inputs.values.astype(data_type)
+        rec_tensor = rec_inputs.values.astype(data_type)
 
-    eval_input = eval_inputs.values.astype(data_type)
+    eval_tensor = eval_inputs.values.astype(data_type)
 
-    inputs = dict(
-        recurrent_input=recurrent_input,
-        eval_input=eval_input,
-    )
-    outputs = log_errors.values.astype(bool)
+    error_tensor = log_errors.values.astype(data_type)
 
-    return inputs, outputs
+    return rec_tensor, eval_tensor, error_tensor
 
 
 def to_defect_probs(

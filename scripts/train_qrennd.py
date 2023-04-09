@@ -3,17 +3,11 @@
 import os
 import pathlib
 import random
+
 import numpy as np
 import tensorflow as tf
 
-from qrennd import (
-    Config,
-    Layout,
-    set_coords,
-    get_callbacks,
-    get_model,
-    load_datasets,
-)
+from qrennd import Config, Layout, get_callbacks, get_model, load_datasets, set_coords
 
 # %%
 # Parameters
@@ -60,20 +54,24 @@ train_data = load_datasets(config=config, layout=layout, dataset_name="train")
 val_data = load_datasets(config=config, layout=layout, dataset_name="dev")
 
 # %%
-if config.model["ConvLSTM"]:
-    seq_size = (1, layout.distance + 1, layout.distance + 1)
+anc_qubits = layout.get_qubits(role="anc")
+num_anc = len(anc_qubits)
+
+if config.model["type"] == "ConvLSTM":
+    rec_features = (1, layout.distance + 1, layout.distance + 1)
 else:
-    seq_size = (len(layout.get_qubits(role="anc")),)
+    rec_features = num_anc
 
 if config.dataset["input"] == "measurements":
-    vec_size = len(layout.get_qubits(role="data"))
+    data_qubits = layout.get_qubits(role="data")
+    eval_features = len(data_qubits)
 else:
-    vec_size = len(layout.get_qubits(role="anc")) // 2
+    eval_features = int(num_anc / 2)
 
 
 model = get_model(
-    seq_size=seq_size,
-    vec_size=vec_size,
+    rec_features=rec_features,
+    eval_features=eval_features,
     config=config,
 )
 
