@@ -44,7 +44,7 @@ class LogicalFidelityDecay(lmfit.model.Model):
         if self.fixed_t0:
             self.set_param_hint("t0", value=0, vary=False)
         else:
-            self.set_param_hint("t0", min=0, vary=True)
+            self.set_param_hint("t0", vary=True)
 
     def guess(self, data: ndarray, x: ndarray, **kws) -> lmfit.parameter.Parameters:
         # to ensure they are np.ndarrays
