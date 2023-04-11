@@ -4,7 +4,13 @@ import numpy as np
 from tensorflow import keras
 
 from ..configs import Config
-from .networks import conv_lstm_network, decoder_network, eval_network, lstm_network
+from .networks import (
+    conv_lstm_network,
+    decoder_network,
+    eval_network,
+    lstm_network,
+    conv_network,
+)
 
 DEFAULT_OPT_PARAMS = dict(learning_rate=0.001)
 
@@ -183,7 +189,7 @@ def conv_lstm_model(
     conv_params = config.model["Conv"]
     network = conv_network(
         name="Conv",
-        **conv_lstm_params,
+        **conv_params,
     )
     output = next(network)(rec_input)
     for layer in network:
@@ -199,6 +205,7 @@ def conv_lstm_model(
     reshape_layer = keras.layers.Reshape(new_shape, name="conv_reshape")
     output = reshape_layer(output)
 
+    lstm_params = config.model["LSTM"]
     network = lstm_network(name="LSTM", **lstm_params)
     for layer in network:
         output = layer(output)

@@ -55,7 +55,8 @@ def load_datasets(
         )
 
     # Process for keras.model input
-    exp_matrix = layout.expansion_matrix() if model_type == "ConvLSTM" else None
+    conv_models = ("ConvLSTM", "Conv+LSTM")
+    exp_matrix = layout.expansion_matrix() if (model_type in conv_models) else None
     data_type = float if input_type == "prob_defects" else bool
     input_gen = (to_model_input(*arrs, exp_matrix, data_type) for arrs in processed_gen)
 
