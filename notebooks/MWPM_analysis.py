@@ -20,6 +20,7 @@ EXP_NAME = "20230310-d3_rot-sruf_circ-level_meas-reset"
 MODEL_FOLDER = "MWPM"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 DATASET_NAME = "test_MWPM_assign0-005"
+FIXED_TO = False
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -125,12 +126,18 @@ if not (DIR / FILE_NAME).exists():
 log_fid = xr.load_dataset(DIR / FILE_NAME)
 
 # %%
-model_decay = LogicalFidelityDecay()
+model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
 params = model_decay.guess(log_fid.log_fid.values, x=log_fid.qec_round.values)
 out = model_decay.fit(
     log_fid.log_fid.values, params, x=log_fid.qec_round.values, min_qec=3
 )
+error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
+t0 = lmfit_par_to_ufloat(out.params["t0"])
+
+# %%
 ax = out.plot_fit()
+ax.plot([], [], " ", label=f"$\\epsilon_L(MWPM) = {error_rate.nominal_value:.4f}$")
+ax.plot([], [], " ", label=f"$t_0(MWPM) = {t0.nominal_value:.4f}$")
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
 ax.set_title("MWPM")
@@ -138,10 +145,5 @@ fig = ax.get_figure()
 fig.tight_layout()
 fig.savefig(DIR / f"{DATASET_NAME}_log-fid_vs_QEC-round.pdf", format="pdf")
 plt.show()
-
-# %%
-error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
-print("error_rate=", error_rate)
-print(log_fid.log_fid)
 
 # %%

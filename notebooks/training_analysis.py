@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 EXP_NAME = "20230310-d3_rot-surf_circ-level_meas-reset"
 MODEL_FOLDER = "20230315-164612_Boris_config_defects"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
+FIXED_TO = False
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -41,8 +42,8 @@ dataframe
 # %%
 METRICS = ("loss", "main_output_accuracy")
 EPOCH_CUT = 50
-acc_MWPM = 0.72482
-goal = 0.764  # same increase in performance as O'Brien paper
+acc_MWPM = None
+goal = None
 
 for metric in METRICS:
     fig, axs = plt.subplots(figsize=(10, 4), ncols=2)
@@ -74,8 +75,12 @@ for metric in METRICS:
     )
 
     if metric == "main_output_accuracy":
-        axs[0].axhline(y=acc_MWPM, linestyle="--", color="gray", label="MWPM (test)")
-        axs[0].axhline(y=goal, linestyle="--", color="black", label="goal")
+        if acc_MWPM is not None:
+            axs[0].axhline(
+                y=acc_MWPM, linestyle="--", color="gray", label="MWPM (test)"
+            )
+        if goal is not None:
+            axs[0].axhline(y=goal, linestyle="--", color="black", label="goal")
 
     axs[0].legend(frameon=False)
     axs[0].set_xlabel("Epochs")
@@ -148,19 +153,19 @@ config = Config.from_yaml(
 )
 
 # %%
-if "ConvLSTM_units" in config.model:
-    seq_size = (1, layout.distance + 1, layout.distance + 1)
+if config.model["type"] == "ConvLSTM":
+    rec_features = (1, layout.distance + 1, layout.distance + 1)
 else:
-    seq_size = (len(layout.get_qubits(role="anc")),)
+    rec_features = (len(layout.get_qubits(role="anc")),)
 
 if config.dataset["input"] == "measurements":
-    vec_size = len(layout.get_qubits(role="data"))
+    eval_features = len(layout.get_qubits(role="data"))
 else:
-    vec_size = len(layout.get_qubits(role="anc")) // 2
+    eval_features = len(layout.get_qubits(role="anc")) // 2
 
 model = get_model(
-    seq_size=seq_size,
-    vec_size=vec_size,
+    rec_features=rec_features,
+    eval_features=eval_features,
     config=config,
 )
 
@@ -179,27 +184,38 @@ log_fid = xr.load_dataset(DIR / "test_results.nc")
 # %%
 MWPM_data = OUTPUT_DIR / EXP_NAME / "MWPM" / "test_results.nc"
 if not MWPM_data.exists():
-    raise TypeError(
+    print(
         (
             f"File not found: {MWPM_data}\n"
             "Run 'MWPM_analysis.py' to generate MWPM data"
         )
     )
+    MWPM_data = False
+    MAX_QEC = np.max(log_fid.qec_round.values)
+else:
+    MWPM_data = xr.load_dataset(MWPM_data)
+    MPWM_log_fid = MWPM_data.log_fid.values
+    MWPM_qec_round = MWPM_data.qec_round.values
+    MAX_QEC = int(min(np.max(log_fid.qec_round.values), np.max(MWPM_qec_round)))
 
-MWPM_data = xr.load_dataset(MWPM_data)
-MPWM_log_fid = MWPM_data.log_fid.values
-MWPM_qec_round = MWPM_data.qec_round.values
+    model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
+    params = model_decay.guess(MWPM_data.log_fid.values, x=MWPM_data.qec_round.values)
+    out = model_decay.fit(
+        MWPM_data.log_fid.values, params, x=MWPM_data.qec_round.values, min_qec=3
+    )
+    error_rate_MWPM = lmfit_par_to_ufloat(out.params["error_rate"])
+    t0_MWPM = lmfit_par_to_ufloat(out.params["t0"])
 
 # %%
-model_decay = LogicalFidelityDecay()
+model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
 params = model_decay.guess(log_fid.log_fid.values, x=log_fid.qec_round.values)
 out = model_decay.fit(
     log_fid.log_fid.values, params, x=log_fid.qec_round.values, min_qec=3
 )
 error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
+t0 = lmfit_par_to_ufloat(out.params["t0"])
 
-MAX_QEC = int(min(np.max(log_fid.qec_round.values), np.max(MWPM_qec_round)))
-
+# %%
 ax = out.plot_fit()
 ax.plot(
     log_fid.qec_round.values[:MAX_QEC],
@@ -207,14 +223,27 @@ ax.plot(
     "b.",
     markersize=10,
 )
-ax.plot(
-    MWPM_qec_round[:MAX_QEC], MPWM_log_fid[:MAX_QEC], "r.", markersize=10, label="MWPM"
-)
+ax.plot([], [], " ", label=f"$\\epsilon_L(NN) = {error_rate.nominal_value:.4f}$")
+ax.plot([], [], " ", label=f"$t_0(NN) = {t0.nominal_value:.4f}$")
+
+if MWPM_data:
+    ax.plot(
+        MWPM_qec_round[:MAX_QEC],
+        MPWM_log_fid[:MAX_QEC],
+        "r.",
+        markersize=10,
+        label="MWPM",
+    )
+    ax.plot(
+        [], [], " ", label=f"$\\epsilon_L(MWPM) = {error_rate_MWPM.nominal_value:.4f}$"
+    )
+    ax.plot([], [], " ", label=f"$t_0(MWPM) = {t0_MWPM.nominal_value:.4f}$")
+
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
 ax.set_yticks(np.arange(0.5, 1, 0.05), np.round(np.arange(0.5, 1, 0.05), decimals=2))
 ax.set_xlim(0, MAX_QEC + 0.5)
-ax.plot([], [], " ", label=f"$\\epsilon_L = {error_rate.nominal_value:.4f}$")
+
 ax.legend()
 ax.grid(which="major")
 fig = ax.get_figure()
