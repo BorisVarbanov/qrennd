@@ -41,17 +41,14 @@ dataframe
 
 # %%
 METRICS = ("loss", "main_output_accuracy")
-EPOCH_CUT = 50
 acc_MWPM = None
 goal = None  # same increase in performance as O'Brien paper
 
 for metric in METRICS:
-    fig, axs = plt.subplots(figsize=(10, 4), ncols=2)
+    fig, ax = plt.subplots(figsize=(10, 4))
 
-    axs[0].plot(
-        dataframe.epoch, dataframe[metric], ".-", color="blue", label="Training"
-    )
-    axs[0].plot(
+    ax.plot(dataframe.epoch, dataframe[metric], ".-", color="blue", label="Training")
+    ax.plot(
         dataframe.epoch,
         dataframe["val_" + metric],
         ".-",
@@ -59,35 +56,15 @@ for metric in METRICS:
         label="Validation",
     )
 
-    axs[1].plot(
-        dataframe.epoch[EPOCH_CUT:],
-        dataframe[metric][EPOCH_CUT:],
-        ".-",
-        color="blue",
-        label="Training",
-    )
-    axs[1].plot(
-        dataframe.epoch[EPOCH_CUT:],
-        dataframe["val_" + metric][EPOCH_CUT:],
-        ".-",
-        color="orange",
-        label="Validation",
-    )
-
     if metric == "main_output_accuracy":
         if acc_MWPM is not None:
-            axs[0].axhline(
-                y=acc_MWPM, linestyle="--", color="gray", label="MWPM (test)"
-            )
+            ax.axhline(y=acc_MWPM, linestyle="--", color="gray", label="MWPM (test)")
         if goal is not None:
-            axs[0].axhline(y=goal, linestyle="--", color="black", label="goal")
+            ax.axhline(y=goal, linestyle="--", color="black", label="goal")
 
-    axs[0].legend(frameon=False)
-    axs[0].set_xlabel("Epochs")
-    axs[0].set_ylabel(metric.replace("_", " ").capitalize())
-    axs[1].legend(frameon=False)
-    axs[1].set_xlabel("Epochs")
-    axs[1].set_xlim(EPOCH_CUT, max(dataframe.epoch) + 1)
+    ax.legend(frameon=False)
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel(metric.replace("_", " ").capitalize())
 
     fig.tight_layout()
     fig.savefig(OUTPUT_DIR / EXP_NAME / MODEL_FOLDER / f"{metric}.pdf", format="pdf")
