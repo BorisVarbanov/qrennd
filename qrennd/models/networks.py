@@ -80,6 +80,46 @@ def conv_lstm_network(
             yield dropout_layer
 
 
+def conv_network(
+    name: str,
+    filters: List[int],
+    kernel_sizes: List[int],
+    dropout_rates: Optional[List[opt_float]] = None,
+) -> Network:
+    num_layers = len(filters)
+    dropout_rates = dropout_rates or list(repeat(None, num_layers))
+
+    if len(dropout_rates) != num_layers:
+        raise ValueError(
+            f"Mismatch between the number of Conv layers ({num_layers})"
+            "and the number of Conv dropout rate after each layer."
+        )
+    if len(kernel_sizes) != num_layers:
+        raise ValueError(
+            f"Mismatch between the number of Conv layers ({num_layers})"
+            "and the number of Conv kernel sizes."
+        )
+
+    inds = range(1, num_layers + 1)
+    for params in zip(inds, filters, dropout_rates, kernel_sizes):
+        ind, layer_filters, rate, size = params
+
+        layer_name = f"{name}-{ind}"
+
+        conv_layer = keras.layers.Conv2D(
+            filters=layer_filters,
+            kernel_size=size,
+            data_format="channels_first",
+            name=layer_name,
+        )
+        conv_layer = keras.layers.TimeDistributed(conv_layer)
+        yield conv_layer
+
+        if rate:
+            dropout_layer = keras.layers.Dropout(rate, name=f"dropout_{layer_name}")
+            yield dropout_layer
+
+
 def eval_network(
     name: str,
     units: List[int],
@@ -103,7 +143,6 @@ def eval_network(
 
     inds = range(1, num_layers + 1)
     for ind, layer_units, rate in zip(inds, units, dropout_rates):
-
         is_output = ind == num_layers
         activation = output_activation if is_output else activation
         layer_name = f"{name}_output" if is_output else f"{name}_eval-{ind}"
@@ -144,7 +183,6 @@ def decoder_network(
 
     inds = range(1, num_layers + 1)
     for ind, layer_units, rate in zip(inds, units, dropout_rates):
-
         is_output = ind == num_layers
         activation = output_activation if is_output else activation
         layer_name = f"{name}_prediction" if is_output else f"{name}_dec-{ind}"
