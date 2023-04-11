@@ -58,11 +58,17 @@ train:
   batch_size: 64
 
 model:
-  ConvLSTM: null
+  type: LSTM
+
   LSTM:
-     units: [64, 64]
-     dropout_rates: [null, null]
-  eval:
-     units: [64]
-     dropout_rates: [null]
-     l2_factor: null
+    units: [64, 64]
+    dropout_rates: [null, null]
+
+  main_eval:
+    units: [64, 1]
+    dropout_rates: [null, null]
+    l2_factor: null
+  aux_eval:
+    units: [64, 1]
+    dropout_rates: [null, null]
+    l2_factor: null
