@@ -291,6 +291,7 @@ def to_defect_probs(
     dataset: xr.Dataset,
     proj_mat: xr.DataArray,
     assign_error: Optional[float] = None,
+    digitization: Optional[bool] = False,
 ):
     """
     Preprocess dataset to generate the probability of defect
@@ -309,6 +310,10 @@ def to_defect_probs(
     proj_mat
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
+    assign_error
+        Assignment error probability for the soft measurements
+    digitization
+        Flag for digitizing the defect probability
     """
     if assign_error is None:
         assign_error = float(dataset.error_prob)
@@ -333,5 +338,9 @@ def to_defect_probs(
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
+
+    if digitization:
+        defect_probs = defect_probs > 0.5
+        final_defect_probs = final_defect_probs > 0.5
 
     return defect_probs, final_defect_probs, log_errors

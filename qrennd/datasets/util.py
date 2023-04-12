@@ -44,8 +44,9 @@ def load_datasets(
         processed_gen = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
     elif input_type == "prob_defects":
         assign_error = config.dataset.get("assign_error")
+        digitization = config.dataset.get("digitization")
         processed_gen = (
-            to_defect_probs(dataset, proj_matrix, assign_error)
+            to_defect_probs(dataset, proj_matrix, assign_error, digitization)
             for dataset in dataset_gen
         )
     else:

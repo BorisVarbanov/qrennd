@@ -28,6 +28,7 @@ dataset:
   folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
   input: "prob_defects"
   assign_error: 0.001
+  digitization: false
 
 train:
   optimizer:
