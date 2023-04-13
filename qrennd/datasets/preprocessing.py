@@ -290,7 +290,7 @@ def to_model_input(
 def to_defect_probs(
     dataset: xr.Dataset,
     proj_mat: xr.DataArray,
-    assign_error: Optional[float] = None,
+    assign_errors: dict,
     digitization: Optional[bool] = False,
 ):
     """
@@ -310,30 +310,31 @@ def to_defect_probs(
     proj_mat
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
-    assign_error
-        Assignment error probability for the soft measurements
+    assign_errors
+        Assignment error probability for the soft measurements.
+        Should be of the form:
+        {"anc": assign_error_ancilla,
+         "data": assign_error_data}
     digitization
         Flag for digitizing the defect probability
     """
-    if assign_error is None:
-        assign_error = float(dataset.error_prob)
-
     # Get Gaussian params
     means = np.array([-1, 1])
-    dev = dev_from_error(means, assign_error)
+    dev_anc = dev_from_error(means, assign_errors["anc"])
+    dev_data = dev_from_error(means, assign_errors["data"])
 
     rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
 
-    samples = rng.normal(means, dev, size=(*dataset.anc_meas.shape, 2))
+    samples = rng.normal(means, dev_anc, size=(*dataset.anc_meas.shape, 2))
     anc_outcomes = xr.where(dataset.anc_meas, samples[..., 1], samples[..., 0])
 
-    anc_probs = get_state_probs(anc_outcomes, means, dev)
+    anc_probs = get_state_probs(anc_outcomes, means, dev_anc)
     defect_probs = get_defect_probs(anc_probs)
 
-    samples = rng.normal(means, dev, size=(*dataset.data_meas.shape, 2))
+    samples = rng.normal(means, dev_data, size=(*dataset.data_meas.shape, 2))
     data_outcomes = xr.where(dataset.data_meas, samples[..., 1], samples[..., 0])
 
-    data_probs = get_state_probs(data_outcomes, means, dev)
+    data_probs = get_state_probs(data_outcomes, means, dev_data)
     final_defect_probs = get_final_defect_probs(anc_probs, data_probs, proj_mat)
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
