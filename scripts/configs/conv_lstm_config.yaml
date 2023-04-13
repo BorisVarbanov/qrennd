@@ -52,7 +52,7 @@ train:
   batch_size: 64
 
 model:
-  type: Conv+LSTM
+  type: Conv_LSTM
   Conv:
     filters: [16, 16]
     dropout_rates: [null, null]
