@@ -352,7 +352,7 @@ def get_model(
         return lstm_model(rec_features, eval_features, config)
     elif model_type == "ConvLSTM":
         return convlstm_model(rec_features, eval_features, config)
-    elif model_type == "Conv+LSTM":
+    elif model_type == "Conv_LSTM":
         return conv_lstm_model(rec_features, eval_features, config)
     elif model_type == "LSTM_decoder":
         return lstm_decoder_model(rec_features, eval_features, config)
