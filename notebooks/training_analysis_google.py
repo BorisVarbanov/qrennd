@@ -133,7 +133,7 @@ config = Config.from_yaml(
 anc_qubits = layout.get_qubits(role="anc")
 num_anc = len(anc_qubits)
 
-if config.model["type"] == "ConvLSTM":
+    if config.model["type"] in ("ConvLSTM", "Conv_LSTM"):
     rec_features = (layout.distance + 1, layout.distance + 1, 1)
 else:
     rec_features = num_anc
