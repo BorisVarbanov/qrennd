@@ -1,0 +1,72 @@
+metadata:
+  experiment: 20230306-d3_rot-surf_biased-noise
+  run: example-train
+  init_weights: null
+
+dataset:
+  train:
+    shots: 200000
+    rounds: !range [1, 20, 2]
+    states: ["000000000", "111111111"]
+
+  dev:
+    shots: 20000
+    rounds: !range [1, 20, 2]
+    states: ["000000000", "111111111"]
+
+  test:
+    shots: 5000
+    rounds: !range [1, 20, 2]
+    states: ["000000000", "111111111"]
+
+  rot_basis: false
+  folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
+  input: "defects"
+
+train:
+  optimizer:
+    learning_rate: 0.0001
+  loss:
+    aux_output: binary_crossentropy
+    main_output: binary_crossentropy
+  loss_weights:
+    aux_output: 0.5
+    main_output: 1.0
+  metrics:
+    aux_output: accuracy
+    main_output: accuracy
+  callbacks:
+    early_stop:
+      monitor: val_loss
+      mode: min
+      min_delta: 0
+      patience: 10
+    csv_log:
+      append: false
+    checkpoint:
+      monitor: val_loss
+      mode: min
+      save_best_only: true
+
+  epochs: 500
+  batch_size: 64
+
+model:
+  type: ConvLSTM
+  ConvLSTM:
+    filters: [64, 64]
+    dropout_rates: [null, null]
+    kernel_sizes: [2, 2]
+
+  LSTM:
+    units: [64, 64]
+    dropout_rates: [null, null]
+
+  main_eval:
+    units: [64, 1]
+    dropout_rates: [null, null]
+    l2_factor: null
+  aux_eval:
+    units: [64, 1]
+    dropout_rates: [null, null]
+    l2_factor: null
