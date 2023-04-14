@@ -45,7 +45,7 @@ acc_MWPM = None
 goal = None
 
 for metric in METRICS:
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots()
 
     ax.plot(dataframe.epoch, dataframe[metric], ".-", color="blue", label="Training")
     ax.plot(
@@ -130,33 +130,38 @@ config = Config.from_yaml(
 )
 
 # %%
-if config.model["type"] == "ConvLSTM":
-    rec_features = (layout.distance + 1, layout.distance + 1, 1)
-else:
-    rec_features = (len(layout.get_qubits(role="anc")),)
-
-if config.dataset["input"] == "measurements":
-    eval_features = len(layout.get_qubits(role="data"))
-else:
-    eval_features = len(layout.get_qubits(role="anc")) // 2
-
-model = get_model(
-    rec_features=rec_features,
-    eval_features=eval_features,
-    config=config,
-)
-
-# %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
 if not (DIR / "test_results.nc").exists():
     print("Evaluating model...")
+
+    anc_qubits = layout.get_qubits(role="anc")
+    num_anc = len(anc_qubits)
+
+    if config.model["type"] == "ConvLSTM":
+        rec_features = (layout.distance + 1, layout.distance + 1, 1)
+    else:
+        rec_features = num_anc
+
+    if config.dataset["input"] == "measurements":
+        data_qubits = layout.get_qubits(role="data")
+        eval_features = len(data_qubits)
+    else:
+        eval_features = int(num_anc / 2)
+
+    model = get_model(
+        rec_features=rec_features,
+        eval_features=eval_features,
+        config=config,
+    )
 
     model.load_weights(DIR / "checkpoint/weights.hdf5")
     log_fid = evaluate_model(model, config, layout, "test")
     log_fid.to_netcdf(path=DIR / "test_results.nc")
 
 log_fid = xr.load_dataset(DIR / "test_results.nc")
+NN_log_fid = log_fid.log_fid.values
+NN_qec_round = log_fid.qec_round.values
 
 # %%
 MWPM_data = OUTPUT_DIR / EXP_NAME / "MWPM" / "test_results.nc"
@@ -175,52 +180,49 @@ else:
     MWPM_qec_round = MWPM_data.qec_round.values
     MAX_QEC = int(min(np.max(log_fid.qec_round.values), np.max(MWPM_qec_round)))
 
-    model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
-    params = model_decay.guess(MWPM_data.log_fid.values, x=MWPM_data.qec_round.values)
-    out = model_decay.fit(
-        MWPM_data.log_fid.values, params, x=MWPM_data.qec_round.values, min_qec=3
-    )
-    error_rate_MWPM = lmfit_par_to_ufloat(out.params["error_rate"])
-    t0_MWPM = lmfit_par_to_ufloat(out.params["t0"])
-
 # %%
-model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
-params = model_decay.guess(log_fid.log_fid.values, x=log_fid.qec_round.values)
-out = model_decay.fit(
-    log_fid.log_fid.values, params, x=log_fid.qec_round.values, min_qec=3
-)
-error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
-t0 = lmfit_par_to_ufloat(out.params["t0"])
-
-# %%
-ax = out.plot_fit()
-ax.plot(
-    log_fid.qec_round.values[:MAX_QEC],
-    log_fid.log_fid.values[:MAX_QEC],
-    "b.",
-    markersize=10,
-)
-ax.plot([], [], " ", label=f"$\\epsilon_L(NN) = {error_rate.nominal_value:.4f}$")
-ax.plot([], [], " ", label=f"$t_0(NN) = {t0.nominal_value:.4f}$")
+fig, ax = plt.subplots()
 
 if MWPM_data:
-    ax.plot(
-        MWPM_qec_round[:MAX_QEC],
-        MPWM_log_fid[:MAX_QEC],
-        "r.",
-        markersize=10,
-        label="MWPM",
-    )
-    ax.plot(
-        [], [], " ", label=f"$\\epsilon_L(MWPM) = {error_rate_MWPM.nominal_value:.4f}$"
-    )
-    ax.plot([], [], " ", label=f"$t_0(MWPM) = {t0_MWPM.nominal_value:.4f}$")
+    x = MWPM_qec_round
+    y = MPWM_log_fid
+    ax.plot(x, y, "b.", markersize=10, label="MWPM")
+
+    for FIXED_TO, fmt in zip([True, False], ["b--", "b-"]):
+        model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
+        params = model_decay.guess(y, x=x)
+        out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
+        error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
+        t0 = lmfit_par_to_ufloat(out.params["t0"])
+        x_fit = np.linspace(layout.distance, max(x), 100)
+        y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
+
+        label = f"$\\epsilon_L = {error_rate.nominal_value:.4f}$\n$t_0 = {t0.nominal_value:.4f}$"
+        ax.plot(x_fit, y_fit, fmt, label=label)
+
+x = NN_qec_round
+y = NN_log_fid
+ax.plot(x, y, "r.", markersize=10, label="NN")
+
+for FIXED_TO, fmt in zip([True, False], ["r--", "r-"]):
+    model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
+    params = model_decay.guess(y, x=x)
+    out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
+    error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
+    t0 = lmfit_par_to_ufloat(out.params["t0"])
+    x_fit = np.linspace(layout.distance, max(x), 100)
+    y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
+
+    label = f"$\\epsilon_L = {error_rate.nominal_value:.4f}$\n$t_0 = {t0.nominal_value:.4f}$"
+    ax.plot(x_fit, y_fit, fmt, label=label)
 
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
-ax.set_yticks(np.arange(0.5, 1, 0.05), np.round(np.arange(0.5, 1, 0.05), decimals=2))
-ax.set_xlim(0, MAX_QEC + 0.5)
-
+ax.set_xlim(0, MAX_QEC + 1)
+ax.set_ylim(0.5, 1)
+ax.set_yticks(
+    np.arange(0.5, 1.01, 0.05), np.round(np.arange(0.5, 1.01, 0.05), decimals=2)
+)
 ax.legend()
 ax.grid(which="major")
 fig = ax.get_figure()

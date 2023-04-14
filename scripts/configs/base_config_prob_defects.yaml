@@ -1,5 +1,5 @@
 metadata:
-  experiment: 20230131-d3_rot-surf_circ-level
+  experiment: 20230306-d3_rot-surf_biased-noise
   run: example-train
   init_weights: null
 
@@ -15,19 +15,22 @@ dataset:
     states: ["000000000", "111111111"]
 
   test:
-    shots: 20000
+    shots: 5000
     rounds: !range [1, 20, 2]
     states: ["000000000", "111111111"]
 
   test_MWPM_assign0-001:
-    shots: 20000
+    shots: 5000
     rounds: !range [1, 20, 2]
     states: ["000000000", "111111111"]
 
   rot_basis: false
   folder_format_name: "surf-code_d3_b{basis}_s{state}_n{shots}_r{num_rounds}"
   input: "prob_defects"
-  assign_error: 0.001
+  assign_errors: 
+    data: 0.001
+    anc: 0.010
+  digitization: false
 
 train:
   optimizer:

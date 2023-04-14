@@ -5,9 +5,9 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230302-d3_rot-surf_simulated_google_20M"
-MODEL_FOLDER = "20230316-170646_google_simulated_dr0-05_conv16"
-LAYOUT_NAME = "d3_rotated_layout.yaml"
+EXP_NAME = "20230405-d5_rot-surf_simulated_google_60M"
+MODEL_FOLDER = "20230412-171035_google_simulated_dr0-05_dim192_lr0-0005"
+LAYOUT_NAME = "d5_rotated_layout.yaml"
 FIXED_T0 = False
 
 # %%
@@ -45,7 +45,7 @@ acc_MWPM = None
 goal = None
 
 for metric in METRICS:
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots()
 
     ax.plot(dataframe.epoch, dataframe[metric], ".-", color="blue", label="Training")
     ax.plot(
@@ -130,15 +130,20 @@ config = Config.from_yaml(
 )
 
 # %%
+anc_qubits = layout.get_qubits(role="anc")
+num_anc = len(anc_qubits)
+
 if config.model["type"] == "ConvLSTM":
     rec_features = (layout.distance + 1, layout.distance + 1, 1)
 else:
-    rec_features = (len(layout.get_qubits(role="anc")),)
+    rec_features = num_anc
 
 if config.dataset["input"] == "measurements":
-    eval_features = len(layout.get_qubits(role="data"))
+    data_qubits = layout.get_qubits(role="data")
+    eval_features = len(data_qubits)
 else:
-    eval_features = len(layout.get_qubits(role="anc")) // 2
+    eval_features = int(num_anc / 2)
+
 
 model = get_model(
     rec_features=rec_features,
