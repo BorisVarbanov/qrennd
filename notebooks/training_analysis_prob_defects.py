@@ -131,7 +131,7 @@ config = Config.from_yaml(
 
 # %%
 if config.model["type"] == "ConvLSTM":
-    rec_features = (1, layout.distance + 1, layout.distance + 1)
+    rec_features = (layout.distance + 1, layout.distance + 1, 1)
 else:
     rec_features = (len(layout.get_qubits(role="anc")),)
 
