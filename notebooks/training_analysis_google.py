@@ -134,7 +134,7 @@ anc_qubits = layout.get_qubits(role="anc")
 num_anc = len(anc_qubits)
 
 if config.model["type"] == "ConvLSTM":
-    rec_features = (1, layout.distance + 1, layout.distance + 1)
+    rec_features = (layout.distance + 1, layout.distance + 1, 1)
 else:
     rec_features = num_anc
 
