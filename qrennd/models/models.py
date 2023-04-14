@@ -127,7 +127,7 @@ def convlstm_model(
         output = activation_layer(output)
     else:
         flatten_layer = keras.layers.Flatten(
-            name="flatten_output", data_format="channels_first"
+            name="flatten_output", data_format="channels_last"
         )
         output = flatten_layer(output)
 

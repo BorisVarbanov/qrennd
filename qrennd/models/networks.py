@@ -70,7 +70,7 @@ def conv_lstm_network(
             filters=layer_filters,
             kernel_size=size,
             return_sequences=return_seq,
-            data_format="channels_first",
+            data_format="channels_last",
             name=layer_name,
         )
         yield lstm_layer
@@ -109,7 +109,7 @@ def conv_network(
         conv_layer = keras.layers.Conv2D(
             filters=layer_filters,
             kernel_size=size,
-            data_format="channels_first",
+            data_format="channels_last",
             name=layer_name,
         )
         conv_layer = keras.layers.TimeDistributed(conv_layer)

@@ -238,7 +238,7 @@ class Layout:
 
         tensor = np.zeros((num_anc, num_rows, num_cols), dtype=bool)
         tensor[anc_inds, row_inds, col_inds] = True
-        expanded_tensor = np.expand_dims(tensor, axis=1)
+        expanded_tensor = np.expand_dims(tensor, axis=-1)
 
         expansion_tensor = DataArray(
             expanded_tensor,
