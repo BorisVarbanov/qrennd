@@ -1,5 +1,6 @@
 description: null
 interaction_order: null
+distance: 5
 layout:
 - freq_group: low
   neighbors:
