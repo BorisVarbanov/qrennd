@@ -16,10 +16,10 @@ import pymatching
 import stim
 
 # %%
-EXP_NAME = "20230323-d3_rot_surf_assign-error_false"
+EXP_NAME = "20230412-d3_rot-surf_no-Y_no-assign"
 MODEL_FOLDER = "MWPM"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
-DATASET_NAME = "test_MWPM_assign0-005"
+DATASET_NAME = "test_MWPM_assign0-010"
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -70,12 +70,13 @@ def evaluate_MWPM(config, layout, dataset_name="test"):
 
             # reshape data for pymatching
             inputs, log_errors = batch
-            anc_defects = np.array(inputs["lstm_input"])
+            anc_defects = np.array(inputs["rec_input"])
             anc_defects = anc_defects.reshape(
                 anc_defects.shape[0], anc_defects.shape[1] * anc_defects.shape[2]
             )
             final_defects = np.array(inputs["eval_input"])
             defects = np.concatenate([anc_defects, final_defects], axis=1)
+            log_errors = log_errors.astype(int)  # convert from float
 
             # load MWPM decoder
             experiment = experiment_name.format(
@@ -139,7 +140,7 @@ for FIXED_TO, fmt in zip([True, False], ["b-", "r-"]):
     x_fit = np.linspace(layout.distance, max(x), 100)
     y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
 
-    label = f"$\\epsilon_L(MWPM) = {error_rate.nominal_value:.4f}$\n$t_0(MWPM) = {t0.nominal_value:.4f}$"
+    label = f"$\\epsilon_L(MWPM) = {error_rate.nominal_value:.5f}$\n$t_0(MWPM) = {t0.nominal_value:.4f}$"
     ax.plot(x_fit, y_fit, fmt, label=label)
 
 ax.plot(x, y, ".", label="MWPM")

@@ -5,8 +5,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230323-d3_rot_surf_assign-error_false"
-MODEL_FOLDER = "20230410-083332_Boris_config_assign0-100_lr0-002_dr0-30"
+EXP_NAME = "20230412-d3_rot-surf_no-Y_no-assign"
+MODEL_FOLDER = "20230414-155958_Boris_config_assign0-010_lr0-002"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 
 # %%
@@ -163,7 +163,8 @@ NN_log_fid = log_fid.log_fid.values
 NN_qec_round = log_fid.qec_round.values
 
 # %%
-dataset = f"test_MWPM_assign{config.dataset['assign_error']:0.3f}".replace(".", "-")
+assign_error = config.dataset["assign_errors"]["anc"]
+dataset = f"test_MWPM_assign{assign_error:0.3f}".replace(".", "-")
 MWPM_name = dataset + "_results.nc"
 MWPM_data = OUTPUT_DIR / EXP_NAME / f"MWPM" / MWPM_name
 if not MWPM_data.exists():
@@ -198,7 +199,7 @@ if MWPM_data:
         x_fit = np.linspace(layout.distance, max(x), 100)
         y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
 
-        label = f"$\\epsilon_L = {error_rate.nominal_value:.4f}$\n$t_0 = {t0.nominal_value:.4f}$"
+        label = f"$\\epsilon_L = {error_rate.nominal_value:.5f}$\n$t_0 = {t0.nominal_value:.4f}$"
         ax.plot(x_fit, y_fit, fmt, label=label)
 
 x = NN_qec_round
@@ -214,7 +215,7 @@ for FIXED_TO, fmt in zip([True, False], ["r--", "r-"]):
     x_fit = np.linspace(layout.distance, max(x), 100)
     y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
 
-    label = f"$\\epsilon_L = {error_rate.nominal_value:.4f}$\n$t_0 = {t0.nominal_value:.4f}$"
+    label = f"$\\epsilon_L = {error_rate.nominal_value:.5f}$\n$t_0 = {t0.nominal_value:.4f}$"
     ax.plot(x_fit, y_fit, fmt, label=label)
 
 ax.set_xlabel("QEC round")

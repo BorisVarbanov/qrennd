@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 # %%
 EXP_NAME = "20230405-d5_rot-surf_simulated_google_60M"
-MODEL_FOLDER = "20230412-171035_google_simulated_dr0-05_dim192_lr0-0005"
+MODEL_FOLDER = "20230416-005053_google_simulated_conv_first-try"
 LAYOUT_NAME = "d5_rotated_layout.yaml"
 FIXED_T0 = False
 
@@ -133,7 +133,7 @@ config = Config.from_yaml(
 anc_qubits = layout.get_qubits(role="anc")
 num_anc = len(anc_qubits)
 
-    if config.model["type"] in ("ConvLSTM", "Conv_LSTM"):
+if config.model["type"] in ("ConvLSTM", "Conv_LSTM"):
     rec_features = (layout.distance + 1, layout.distance + 1, 1)
 else:
     rec_features = num_anc

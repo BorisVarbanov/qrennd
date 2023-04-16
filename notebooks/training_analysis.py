@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 # %%
 EXP_NAME = "20230310-d3_rot-surf_circ-level_meas-reset"
-MODEL_FOLDER = "20230315-164612_Boris_config_defects"
+MODEL_FOLDER = "20230415-175326_lstm_similar-config-lstm32"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 FIXED_TO = False
 
@@ -197,7 +197,7 @@ if MWPM_data:
         x_fit = np.linspace(layout.distance, max(x), 100)
         y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
 
-        label = f"$\\epsilon_L = {error_rate.nominal_value:.4f}$\n$t_0 = {t0.nominal_value:.4f}$"
+        label = f"$\\epsilon_L = {error_rate.nominal_value:.5f}$\n$t_0 = {t0.nominal_value:.4f}$"
         ax.plot(x_fit, y_fit, fmt, label=label)
 
 x = NN_qec_round
@@ -213,7 +213,7 @@ for FIXED_TO, fmt in zip([True, False], ["r--", "r-"]):
     x_fit = np.linspace(layout.distance, max(x), 100)
     y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
 
-    label = f"$\\epsilon_L = {error_rate.nominal_value:.4f}$\n$t_0 = {t0.nominal_value:.4f}$"
+    label = f"$\\epsilon_L = {error_rate.nominal_value:.5f}$\n$t_0 = {t0.nominal_value:.4f}$"
     ax.plot(x_fit, y_fit, fmt, label=label)
 
 ax.set_xlabel("QEC round")
