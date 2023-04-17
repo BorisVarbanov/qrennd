@@ -1,9 +1,9 @@
 #!/bin/sh
 
 username="bmvarbanov"
-dataset="20230214-d3_rot-surf_circ-level_p0.001"
-run="20230222-000215_units64_p0.001_eval-dropout0.2_l2null_lr0.001_extended-val_max-train-rounds40"
-from_scrath=true
+dataset="20230306-d3_rot-surf_biased-noise"
+run="20230326-161328_google_simulated_dr0-05_dim128_continue2"
+from_scrath=false
 
 
 if $from_scrath;
