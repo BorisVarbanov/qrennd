@@ -5,9 +5,9 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230405-d5_rot-surf_simulated_google_60M"
-MODEL_FOLDER = "20230416-005053_google_simulated_conv_first-try"
-LAYOUT_NAME = "d5_rotated_layout.yaml"
+EXP_NAME = "20230302-d3_rot-surf_simulated_google_20M"
+MODEL_FOLDER = "20230416-094702_google_simulated_dr0-05_conv_lstm_dr0-10_continue"
+LAYOUT_NAME = "d3_rotated_layout.yaml"
 FIXED_T0 = False
 
 # %%
@@ -97,26 +97,32 @@ def evaluate_model(model, config, layout, dataset_name="test"):
         config_.dataset[dataset_name]["rounds"] = [rounds]
         config_.train["batch_size"] = config_.dataset[dataset_name]["shots"]
         test_data = load_datasets(
-            config=config_, layout=layout, dataset_name=dataset_name
+            config=config_, layout=layout, dataset_name=dataset_name, concat=False
         )
 
-        output = model.evaluate(
-            test_data,
-            callbacks=callbacks,
-            verbose=0,
-            return_dict=True,
-        )
-        outputs[rounds] = output
+        correct = []
+        for data in test_data:
+            inputs, log_errors = data[0]
+            output = model.predict(
+                data,
+                verbose=0,
+            )
+            output = output[0] > 0.5
+            correct.append(output.flatten() == log_errors)
 
-    # convert to xr.DataArray
-    rounds, log_fid = np.array(
-        [
-            [rounds, metrics["main_output_accuracy"]]
-            for rounds, metrics in outputs.items()
-        ]
-    ).T
+        correct = np.array(correct).flatten()
+        accuracy = np.average(correct)
+        std = np.std(correct)
+        outputs[rounds] = {"acc": accuracy, "std": std}
 
-    log_fid = xr.DataArray(data=log_fid, coords=dict(qec_round=rounds), name="log_fid")
+    accuracy = np.array([outputs[rounds]["acc"] for rounds in outputs])
+    std = np.array([outputs[rounds]["std"] for rounds in outputs])
+    qec_rounds = list(outputs.keys())
+
+    log_fid = xr.Dataset(
+        data_vars=dict(avg=(["qec_round"], accuracy), err=(["qec_round"], std)),
+        coords=dict(qec_round=qec_rounds),
+    )
 
     return log_fid
 
@@ -211,21 +217,21 @@ t0_MWPM = lmfit_par_to_ufloat(out.params["t0"])
 
 # %%
 model_decay = LogicalFidelityDecay(fixed_t0=FIXED_T0)
-params = model_decay.guess(log_fid.log_fid.values, x=log_fid.qec_round.values)
-out = model_decay.fit(
-    log_fid.log_fid.values, params, x=log_fid.qec_round.values, min_qec=3
-)
+params = model_decay.guess(log_fid.avg.values, x=log_fid.qec_round.values)
+out = model_decay.fit(log_fid.avg.values, params, x=log_fid.qec_round.values, min_qec=3)
 error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
 t0 = lmfit_par_to_ufloat(out.params["t0"])
 
-MAX_QEC = min(len(log_fid.log_fid), len(MWPM_log_fid))
+MAX_QEC = min(len(log_fid.avg), len(MWPM_log_fid))
 
 ax = out.plot_fit()
-ax.plot(
+ax.errorbar(
     log_fid.qec_round.values[:MAX_QEC],
-    log_fid.log_fid.values[:MAX_QEC],
-    "b.",
+    log_fid.avg.values[:MAX_QEC],
+    yerr=log_fid.err.values[:MAX_QEC],
+    fmt="b.",
     markersize=10,
+    capsize=2,
 )
 ax.plot([], [], " ", label=f"$\\epsilon_L(NN) = {error_rate.nominal_value:.4f}$")
 ax.plot([], [], " ", label=f"$t_0(NN) = {t0.nominal_value:.4f}$")
@@ -241,6 +247,7 @@ ax.set_ylabel("logical fidelity")
 ax.set_xticks(log_fid.qec_round.values[::2], log_fid.qec_round.values[::2])
 ax.set_yticks(np.arange(0.5, 1, 0.05), np.round(np.arange(0.5, 1, 0.05), decimals=2))
 ax.set_xlim(0, MWPM_qec_round[MAX_QEC - 1] + 0.5)
+ax.set_ylim(0.5, 1)
 ax.legend()
 ax.grid(which="major")
 ax.set_title("Simulated data")
@@ -409,14 +416,12 @@ dec_qec_round = np.arange(1, 25 + 1, 2)
 
 # %%
 model_decay = LogicalFidelityDecay(fixed_t0=FIXED_T0)
-params = model_decay.guess(log_fid.log_fid.values, x=log_fid.qec_round.values)
-out = model_decay.fit(
-    log_fid.log_fid.values, params, x=log_fid.qec_round.values, min_qec=3
-)
+params = model_decay.guess(log_fid.avg.values, x=log_fid.qec_round.values)
+out = model_decay.fit(log_fid.avg.values, params, x=log_fid.qec_round.values, min_qec=3)
 error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
 t0 = lmfit_par_to_ufloat(out.params["t0"])
 
-MAX_QEC = min(len(log_fid.log_fid), len(MWPM_log_fid))
+MAX_QEC = min(len(log_fid.avg), len(MWPM_log_fid))
 
 ax = out.plot_fit()
 ax.plot(
@@ -439,11 +444,13 @@ ax.plot(
     markersize=10,
     label="tensor",
 )
-ax.plot(
+ax.errorbar(
     log_fid.qec_round.values[:MAX_QEC],
-    log_fid.log_fid.values[:MAX_QEC],
-    "b.",
+    log_fid.avg.values[:MAX_QEC],
+    yerr=log_fid.err.values[:MAX_QEC],
+    fmt="b.",
     markersize=10,
+    capsize=2,
 )
 ax.plot([], [], " ", label=f"$\\epsilon_L(NN) = {error_rate.nominal_value:.4f}$")
 ax.plot([], [], " ", label=f"$t_0(NN) = {t0.nominal_value:.4f}$")
@@ -453,6 +460,7 @@ ax.set_ylabel("logical fidelity")
 ax.set_xticks(log_fid.qec_round.values[::2], log_fid.qec_round.values[::2])
 ax.set_yticks(np.arange(0.5, 1, 0.05), np.round(np.arange(0.5, 1, 0.05), decimals=2))
 ax.set_xlim(0, MWPM_qec_round[MAX_QEC - 1] + 0.5)
+ax.set_ylim(0.5, 1)
 ax.legend()
 ax.grid(which="major")
 ax.set_title("Experimental data")

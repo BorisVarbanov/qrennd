@@ -97,26 +97,32 @@ def evaluate_model(model, config, layout, dataset_name="test"):
         config_.dataset[dataset_name]["rounds"] = [rounds]
         config_.train["batch_size"] = config_.dataset[dataset_name]["shots"]
         test_data = load_datasets(
-            config=config_, layout=layout, dataset_name=dataset_name
+            config=config_, layout=layout, dataset_name=dataset_name, concat=False
         )
 
-        output = model.evaluate(
-            test_data,
-            callbacks=callbacks,
-            verbose=0,
-            return_dict=True,
-        )
-        outputs[rounds] = output
+        correct = []
+        for data in test_data:
+            inputs, log_errors = data[0]
+            output = model.predict(
+                data,
+                verbose=0,
+            )
+            output = output[0] > 0.5
+            correct.append(output.flatten() == log_errors)
 
-    # convert to xr.DataArray
-    rounds, log_fid = np.array(
-        [
-            [rounds, metrics["main_output_accuracy"]]
-            for rounds, metrics in outputs.items()
-        ]
-    ).T
+        correct = np.array(correct).flatten()
+        accuracy = np.average(correct)
+        std = np.std(correct)
+        outputs[rounds] = {"acc": accuracy, "std": std}
 
-    log_fid = xr.DataArray(data=log_fid, coords=dict(qec_round=rounds), name="log_fid")
+    accuracy = np.array([outputs[rounds]["acc"] for rounds in outputs])
+    std = np.array([outputs[rounds]["std"] for rounds in outputs])
+    qec_rounds = list(outputs.keys())
+
+    log_fid = xr.Dataset(
+        data_vars=dict(avg=(["qec_round"], accuracy), err=(["qec_round"], std)),
+        coords=dict(qec_round=qec_rounds),
+    )
 
     return log_fid
 
@@ -132,7 +138,7 @@ config = Config.from_yaml(
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-if not (DIR / "test_results.nc").exists():
+if True:  # not (DIR / "test_results.nc").exists():
     print("Evaluating model...")
 
     anc_qubits = layout.get_qubits(role="anc")
@@ -160,7 +166,8 @@ if not (DIR / "test_results.nc").exists():
     log_fid.to_netcdf(path=DIR / "test_results.nc")
 
 log_fid = xr.load_dataset(DIR / "test_results.nc")
-NN_log_fid = log_fid.log_fid.values
+NN_log_fid = log_fid.avg.values
+NN_log_fid_std = log_fid.err.values
 NN_qec_round = log_fid.qec_round.values
 
 # %%
@@ -176,7 +183,8 @@ if not MWPM_data.exists():
     MAX_QEC = np.max(log_fid.qec_round.values)
 else:
     MWPM_data = xr.load_dataset(MWPM_data)
-    MPWM_log_fid = MWPM_data.log_fid.values
+    MPWM_log_fid = MWPM_data.avg.values
+    MPWM_log_fid_std = MWPM_data.err.values
     MWPM_qec_round = MWPM_data.qec_round.values
     MAX_QEC = int(min(np.max(log_fid.qec_round.values), np.max(MWPM_qec_round)))
 
@@ -186,7 +194,9 @@ fig, ax = plt.subplots()
 if MWPM_data:
     x = MWPM_qec_round
     y = MPWM_log_fid
-    ax.plot(x, y, "b.", markersize=10, label="MWPM")
+    ax.errorbar(
+        x, y, yerr=MPWM_log_fid_std, fmt="b.", markersize=10, capsize=2, label="MWPM"
+    )
 
     for FIXED_TO, fmt in zip([True, False], ["b--", "b-"]):
         model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
@@ -194,15 +204,18 @@ if MWPM_data:
         out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
         error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
         t0 = lmfit_par_to_ufloat(out.params["t0"])
+
         x_fit = np.linspace(layout.distance, max(x), 100)
         y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
+        label = f"$\\epsilon_L = (${error_rate*100})%"
+        if FIXED_TO:
+            label += "\nwith fixed $t_0 = 0$"
 
-        label = f"$\\epsilon_L = {error_rate.nominal_value:.5f}$\n$t_0 = {t0.nominal_value:.4f}$"
         ax.plot(x_fit, y_fit, fmt, label=label)
 
 x = NN_qec_round
 y = NN_log_fid
-ax.plot(x, y, "r.", markersize=10, label="NN")
+ax.errorbar(x, y, yerr=NN_log_fid_std, fmt="r.", markersize=10, capsize=2, label="NN")
 
 for FIXED_TO, fmt in zip([True, False], ["r--", "r-"]):
     model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
@@ -210,10 +223,13 @@ for FIXED_TO, fmt in zip([True, False], ["r--", "r-"]):
     out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
     error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
     t0 = lmfit_par_to_ufloat(out.params["t0"])
+
     x_fit = np.linspace(layout.distance, max(x), 100)
     y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
+    label = f"$\\epsilon_L = (${error_rate*100})%"
+    if FIXED_TO:
+        label += "\nwith fixed $t_0 = 0$"
 
-    label = f"$\\epsilon_L = {error_rate.nominal_value:.5f}$\n$t_0 = {t0.nominal_value:.4f}$"
     ax.plot(x_fit, y_fit, fmt, label=label)
 
 ax.set_xlabel("QEC round")
@@ -223,12 +239,14 @@ ax.set_ylim(0.5, 1)
 ax.set_yticks(
     np.arange(0.5, 1.01, 0.05), np.round(np.arange(0.5, 1.01, 0.05), decimals=2)
 )
-ax.legend()
+ax.legend(loc="best")
 ax.grid(which="major")
 fig = ax.get_figure()
 fig.tight_layout()
 fig.savefig(DIR / "log-fid_vs_qec-round.pdf", format="pdf")
 fig.savefig(DIR / "log-fid_vs_qec-round.png", format="png")
 plt.show()
+
+# %%
 
 # %%
