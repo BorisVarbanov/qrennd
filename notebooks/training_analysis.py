@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 # %%
 EXP_NAME = "20230310-d3_rot-surf_circ-level_meas-reset"
-MODEL_FOLDER = "20230415-175326_lstm_similar-config-lstm32"
+MODEL_FOLDER = "20230315-164612_Boris_config_defects"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 FIXED_TO = False
 
@@ -138,7 +138,7 @@ config = Config.from_yaml(
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-if True:  # not (DIR / "test_results.nc").exists():
+if not (DIR / "test_results.nc").exists():
     print("Evaluating model...")
 
     anc_qubits = layout.get_qubits(role="anc")
