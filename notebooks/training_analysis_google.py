@@ -5,10 +5,10 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230302-d3_rot-surf_simulated_google_20M"
-MODEL_FOLDER = "20230416-094702_google_simulated_dr0-05_conv_lstm_dr0-10_continue"
+EXP_NAME = "20230418-d3_simulated_google_20M"
+MODEL_FOLDER = "20230305-112822_google_simulated_d3_20M_dr0-05_center_3_5"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
-FIXED_T0 = False
+ERRORBARS = False
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -136,6 +136,12 @@ config = Config.from_yaml(
 )
 
 # %%
+# get metadata
+DISTANCE = layout.distance
+CENTER = config.dataset["test"]["center"]
+BASIS = "X" if config.dataset["rot_basis"] else "Z"
+
+# %%
 anc_qubits = layout.get_qubits(role="anc")
 num_anc = len(anc_qubits)
 
@@ -157,102 +163,68 @@ model = get_model(
     config=config,
 )
 
+# %% [markdown]
+# ## 1) Test simulated data
+
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-if not (DIR / "test_results_simulated.nc").exists():
+filename = "test.nc"
+if not (DIR / filename).exists():
     print("Evaluating model...")
 
     model.load_weights(DIR / "checkpoint/weights.hdf5")
     log_fid = evaluate_model(model, config, layout, "test")
-    log_fid.to_netcdf(path=DIR / "test_results_simulated.nc")
+    log_fid.to_netcdf(path=DIR / filename)
 
-log_fid = xr.load_dataset(DIR / "test_results_simulated.nc")
+log_fid = xr.load_dataset(DIR / filename)
 
-# %%
-# google's data (simulated)
-if "d3" in LAYOUT_NAME:
-    MWPM_log_fid = np.array(
-        [
-            0.982,
-            0.9215,
-            0.865,
-            0.792,
-            0.78,
-            0.729,
-            0.6835,
-            0.664,
-            0.648,
-            0.631,
-            0.602,
-            0.5985,
-            0.5995,
-        ]
-    )
-elif "d5" in LAYOUT_NAME:
-    MWPM_log_fid = np.array(
-        [
-            0.9921,
-            0.942,
-            0.8902,
-            0.84156,
-            0.80066,
-            0.76196,
-            0.73308,
-            0.70262,
-            0.67826,
-            0.65834,
-            0.63502,
-            0.62378,
-            0.60516,
-        ]
-    )
-MWPM_qec_round = np.arange(1, 25 + 1, 2)
+DIR = OUTPUT_DIR / EXP_NAME / "pymatching"
+filename = f"test_b{BASIS}_d{DISTANCE}_center_{CENTER}.nc"
+if not (DIR / filename).exists():
+    print("Warning: Run MWPM_analysis.py to generate data")
 
-model_decay = LogicalFidelityDecay(fixed_t0=FIXED_T0)
-params = model_decay.guess(MWPM_log_fid, x=MWPM_qec_round)
-out = model_decay.fit(MWPM_log_fid, params, x=MWPM_qec_round, min_qec=3)
-error_rate_MWPM = lmfit_par_to_ufloat(out.params["error_rate"])
-t0_MWPM = lmfit_par_to_ufloat(out.params["t0"])
+pymatching_log_fid = xr.load_dataset(DIR / filename)
+
 
 # %%
-model_decay = LogicalFidelityDecay(fixed_t0=FIXED_T0)
-params = model_decay.guess(log_fid.avg.values, x=log_fid.qec_round.values)
-out = model_decay.fit(log_fid.avg.values, params, x=log_fid.qec_round.values, min_qec=3)
-error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
-t0 = lmfit_par_to_ufloat(out.params["t0"])
+datasets = [log_fid, pymatching_log_fid]
+colors = ["blue", "red"]
+labels = ["NN", "MWPM"]
 
-MAX_QEC = min(len(log_fid.avg), len(MWPM_log_fid))
+fig, ax = plt.subplots()
 
-ax = out.plot_fit()
-ax.errorbar(
-    log_fid.qec_round.values[:MAX_QEC],
-    log_fid.avg.values[:MAX_QEC],
-    yerr=log_fid.err.values[:MAX_QEC],
-    fmt="b.",
-    markersize=10,
-    capsize=2,
-)
-ax.plot([], [], " ", label=f"$\\epsilon_L(NN) = {error_rate.nominal_value:.4f}$")
-ax.plot([], [], " ", label=f"$t_0(NN) = {t0.nominal_value:.4f}$")
+for dataset, color, label in zip(datasets, colors, labels):
+    x, y = dataset.qec_round.values, dataset.avg.values
+    yerr = dataset.err.values if ERRORBARS else 0
+    ax.errorbar(
+        x, y, yerr=yerr, fmt=".", color=color, markersize=10, capsize=2, label=label
+    )
 
-ax.plot(
-    MWPM_qec_round[:MAX_QEC], MWPM_log_fid[:MAX_QEC], "r.", markersize=10, label="MWPM"
-)
-ax.plot([], [], " ", label=f"$\\epsilon_L(MWPM) = {error_rate_MWPM.nominal_value:.4f}$")
-ax.plot([], [], " ", label=f"$t_0(MWPM) = {t0_MWPM.nominal_value:.4f}$")
+    model_decay = LogicalFidelityDecay(fixed_t0=False)
+    params = model_decay.guess(y, x=x)
+    out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
+    error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
+    t0 = lmfit_par_to_ufloat(out.params["t0"])
+
+    x_fit = np.linspace(layout.distance, max(x), 100)
+    y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
+    ax.plot(
+        x_fit, y_fit, "-", color=color, label=f"$\\epsilon_L = (${error_rate*100})%"
+    )
 
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
-ax.set_xticks(log_fid.qec_round.values[::2], log_fid.qec_round.values[::2])
-ax.set_yticks(np.arange(0.5, 1, 0.05), np.round(np.arange(0.5, 1, 0.05), decimals=2))
-ax.set_xlim(0, MWPM_qec_round[MAX_QEC - 1] + 0.5)
+ax.set_xlim(0, 25 + 1)
 ax.set_ylim(0.5, 1)
-ax.legend()
+ax.set_yticks(
+    np.arange(0.5, 1.01, 0.05), np.round(np.arange(0.5, 1.01, 0.05), decimals=2)
+)
+ax.legend(loc="best")
 ax.grid(which="major")
-ax.set_title("Simulated data")
 fig = ax.get_figure()
 fig.tight_layout()
+DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
 fig.savefig(DIR / "log-fid_vs_qec-round_simulated.pdf", format="pdf")
 fig.savefig(DIR / "log-fid_vs_qec-round_simulated.png", format="png")
 plt.show()
@@ -263,211 +235,88 @@ plt.show()
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-if not (DIR / "test_results_experimental.nc").exists():
+filename = "test_exp.nc"
+if not (DIR / filename).exists():
     print("Evaluating model...")
 
     model.load_weights(DIR / "checkpoint/weights.hdf5")
     log_fid = evaluate_model(model, config, layout, "test_experimental")
-    log_fid.to_netcdf(path=DIR / "test_results_experimental.nc")
+    log_fid.to_netcdf(path=DIR / filename)
 
-log_fid = xr.load_dataset(DIR / "test_results_experimental.nc")
+log_fid = xr.load_dataset(DIR / filename)
 
-# %%
-if "d3" in LAYOUT_NAME:
-    # google's data
-    MWPM_log_fid = np.array(
-        [
-            0.98362,
-            0.90834,
-            0.84856,
-            0.78104,
-            0.7425,
-            0.70236,
-            0.67078,
-            0.64652,
-            0.61526,
-            0.60846,
-            0.58354,
-            0.57838,
-            0.56722,
-        ]
-    )
-    CORR_log_fid = np.array(
-        [
-            0.98362,
-            0.91344,
-            0.85956,
-            0.80068,
-            0.76252,
-            0.7271,
-            0.69716,
-            0.6677,
-            0.6393,
-            0.62876,
-            0.6065,
-            0.59728,
-            0.57862,
-        ]
-    )
-    BELIEF_log_fid = np.array(
-        [
-            0.98358,
-            0.92146,
-            0.87334,
-            0.81486,
-            0.78084,
-            0.74368,
-            0.71576,
-            0.68738,
-            0.65658,
-            0.6465,
-            0.6217,
-            0.61562,
-            0.59626,
-        ]
-    )
-    TENSOR_log_fid = np.array(
-        [
-            0.98362,
-            0.92314,
-            0.87512,
-            0.82052,
-            0.78392,
-            0.74664,
-            0.71704,
-            0.68892,
-            0.66008,
-            0.64562,
-            0.62196,
-            0.61106,
-            0.59156,
-        ]
-    )
-elif "d5" in LAYOUT_NAME:
-    MWPM_log_fid = np.array(
-        [
-            0.99184,
-            0.92712,
-            0.85624,
-            0.80086,
-            0.75568,
-            0.7117,
-            0.67334,
-            0.64378,
-            0.621,
-            0.6028,
-            0.58466,
-            0.57016,
-            0.56142,
-        ]
-    )
-    CORR_log_fid = np.array(
-        [
-            0.99184,
-            0.93482,
-            0.87484,
-            0.82576,
-            0.78732,
-            0.7474,
-            0.71138,
-            0.68194,
-            0.65242,
-            0.63664,
-            0.61714,
-            0.60186,
-            0.58976,
-        ]
-    )
-    BELIEF_log_fid = np.array(
-        [
-            0.99202,
-            0.9444,
-            0.89276,
-            0.84616,
-            0.81528,
-            0.77564,
-            0.74194,
-            0.71532,
-            0.68796,
-            0.66528,
-            0.64676,
-            0.63186,
-            0.6155,
-        ]
-    )
-    TENSOR_log_fid = np.array(
-        [
-            0.9923,
-            0.94722,
-            0.89784,
-            0.8562,
-            0.82162,
-            0.78272,
-            0.75284,
-            0.72576,
-            0.69972,
-            0.67428,
-            0.65354,
-            0.63902,
-            0.62306,
-        ]
-    )
-dec_qec_round = np.arange(1, 25 + 1, 2)
+DIR = OUTPUT_DIR / EXP_NAME / "pymatching"
+filename = f"test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
+if not (DIR / filename).exists():
+    print("Warning: Run MWPM_analysis.py to generate data")
+
+pymatching_log_fid = xr.load_dataset(DIR / filename)
+
+DIR = OUTPUT_DIR / EXP_NAME / "belief_matching"
+filename = f"test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
+if not (DIR / filename).exists():
+    print("Warning: Run MWPM_analysis.py to generate data")
+
+bel_matching_log_fid = xr.load_dataset(DIR / filename)
+
+DIR = OUTPUT_DIR / EXP_NAME / "correlated_matching"
+filename = f"test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
+if not (DIR / filename).exists():
+    print("Warning: Run MWPM_analysis.py to generate data")
+
+corr_matching_log_fid = xr.load_dataset(DIR / filename)
+
+DIR = OUTPUT_DIR / EXP_NAME / "tensor_network_contraction"
+filename = f"test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
+if not (DIR / filename).exists():
+    print("Warning: Run MWPM_analysis.py to generate data")
+
+tensor_log_fid = xr.load_dataset(DIR / filename)
 
 # %%
-model_decay = LogicalFidelityDecay(fixed_t0=FIXED_T0)
-params = model_decay.guess(log_fid.avg.values, x=log_fid.qec_round.values)
-out = model_decay.fit(log_fid.avg.values, params, x=log_fid.qec_round.values, min_qec=3)
-error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
-t0 = lmfit_par_to_ufloat(out.params["t0"])
+datasets = [
+    log_fid,
+    pymatching_log_fid,
+    bel_matching_log_fid,
+    corr_matching_log_fid,
+    tensor_log_fid,
+]
+colors = ["blue", "red", "green", "orange", "purple"]
+labels = ["NN", "MWPM", "BeliefM", "corrM", "tensor"]
 
-MAX_QEC = min(len(log_fid.avg), len(MWPM_log_fid))
+fig, ax = plt.subplots()
 
-ax = out.plot_fit()
-ax.plot(
-    dec_qec_round[:MAX_QEC], MWPM_log_fid[:MAX_QEC], "r.", markersize=10, label="MWPM"
-)
-ax.plot(
-    dec_qec_round[:MAX_QEC], CORR_log_fid[:MAX_QEC], "c.", markersize=10, label="corr"
-)
-ax.plot(
-    dec_qec_round[:MAX_QEC],
-    BELIEF_log_fid[:MAX_QEC],
-    "g.",
-    markersize=10,
-    label="belief",
-)
-ax.plot(
-    dec_qec_round[:MAX_QEC],
-    TENSOR_log_fid[:MAX_QEC],
-    "m.",
-    markersize=10,
-    label="tensor",
-)
-ax.errorbar(
-    log_fid.qec_round.values[:MAX_QEC],
-    log_fid.avg.values[:MAX_QEC],
-    yerr=log_fid.err.values[:MAX_QEC],
-    fmt="b.",
-    markersize=10,
-    capsize=2,
-)
-ax.plot([], [], " ", label=f"$\\epsilon_L(NN) = {error_rate.nominal_value:.4f}$")
-ax.plot([], [], " ", label=f"$t_0(NN) = {t0.nominal_value:.4f}$")
+for dataset, color, label in zip(datasets, colors, labels):
+    x, y = dataset.qec_round.values, dataset.avg.values
+    yerr = dataset.err.values if ERRORBARS else 0
+    ax.errorbar(
+        x, y, yerr=yerr, fmt=".", color=color, markersize=10, capsize=2, label=label
+    )
+
+    model_decay = LogicalFidelityDecay(fixed_t0=False)
+    params = model_decay.guess(y, x=x)
+    out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
+    error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
+    t0 = lmfit_par_to_ufloat(out.params["t0"])
+
+    x_fit = np.linspace(layout.distance, max(x), 100)
+    y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
+    ax.plot(
+        x_fit, y_fit, "-", color=color, label=f"$\\epsilon_L = (${error_rate*100})%"
+    )
 
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
-ax.set_xticks(log_fid.qec_round.values[::2], log_fid.qec_round.values[::2])
-ax.set_yticks(np.arange(0.5, 1, 0.05), np.round(np.arange(0.5, 1, 0.05), decimals=2))
-ax.set_xlim(0, MWPM_qec_round[MAX_QEC - 1] + 0.5)
+ax.set_xlim(0, 25 + 1)
 ax.set_ylim(0.5, 1)
-ax.legend()
+ax.set_yticks(
+    np.arange(0.5, 1.01, 0.05), np.round(np.arange(0.5, 1.01, 0.05), decimals=2)
+)
+ax.legend(loc="best")
 ax.grid(which="major")
-ax.set_title("Experimental data")
 fig = ax.get_figure()
 fig.tight_layout()
+DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
 fig.savefig(DIR / "log-fid_vs_qec-round_experimental.pdf", format="pdf")
 fig.savefig(DIR / "log-fid_vs_qec-round_experimental.png", format="png")
 plt.show()
-
-# %%
