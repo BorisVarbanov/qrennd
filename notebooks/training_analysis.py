@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 EXP_NAME = "20230403-d3_rot-css-surface_circ-level_p0-001"
 MODEL_FOLDER = "20230419-224354_conv_lstm_first-try_k16-16"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
-TEST_DATASET = "test"
+TEST_DATASET = "test"  # str or list
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -121,44 +121,48 @@ config = Config.from_yaml(
     data_dir=DATA_DIR,
     output_dir=OUTPUT_DIR,
 )
+if not isinstance(TEST_DATASET, list):
+    TEST_DATASET = [TEST_DATASET]
 
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-NAME = f"{TEST_DATASET}.nc"
-if not (DIR / NAME).exists():
-    print("Evaluating model...")
+for test_dataset in TEST_DATASET:
+    NAME = f"{test_dataset}.nc"
+    if not (DIR / NAME).exists():
+        print("Evaluating model...")
 
-    anc_qubits = layout.get_qubits(role="anc")
-    num_anc = len(anc_qubits)
+        anc_qubits = layout.get_qubits(role="anc")
+        num_anc = len(anc_qubits)
 
-    if config.model["type"] in ("ConvLSTM", "Conv_LSTM"):
-        rec_features = (layout.distance + 1, layout.distance + 1, 1)
+        if config.model["type"] in ("ConvLSTM", "Conv_LSTM"):
+            rec_features = (layout.distance + 1, layout.distance + 1, 1)
+        else:
+            rec_features = num_anc
+
+        if config.dataset["input"] == "measurements":
+            data_qubits = layout.get_qubits(role="data")
+            eval_features = len(data_qubits)
+        else:
+            eval_features = int(num_anc / 2)
+
+        model = get_model(
+            rec_features=rec_features,
+            eval_features=eval_features,
+            config=config,
+        )
+
+        model.load_weights(DIR / "checkpoint/weights.hdf5")
+        log_fid = evaluate_model(model, config, layout, test_dataset)
+        log_fid.to_netcdf(path=DIR / NAME)
+
+        print("Done!")
+
     else:
-        rec_features = num_anc
+        print("Model already evaluated!")
 
-    if config.dataset["input"] == "measurements":
-        data_qubits = layout.get_qubits(role="data")
-        eval_features = len(data_qubits)
-    else:
-        eval_features = int(num_anc / 2)
-
-    model = get_model(
-        rec_features=rec_features,
-        eval_features=eval_features,
-        config=config,
-    )
-
-    model.load_weights(DIR / "checkpoint/weights.hdf5")
-    log_fid = evaluate_model(model, config, layout, TEST_DATASET)
-    log_fid.to_netcdf(path=DIR / NAME)
-
-    print("Done!")
-
-else:
-    print("Model already evaluated!")
-
-print("\nRESULTS IN:")
-print("output_dir=", NOTEBOOK_DIR)
-print("exp_name=", EXP_NAME)
-print("run_name=", MODEL_FOLDER)
+    print("\nRESULTS IN:")
+    print("output_dir=", NOTEBOOK_DIR)
+    print("exp_name=", EXP_NAME)
+    print("run_name=", MODEL_FOLDER)
+    print("test_data=", test_dataset)
