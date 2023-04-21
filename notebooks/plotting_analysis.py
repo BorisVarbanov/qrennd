@@ -64,7 +64,11 @@ for dataset in datasets:
 
         x_fit = np.linspace(fit.get("min_qec"), max(x), 100)
         y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
-        vars_fit = {"error_rate": error_rate, "t0": t0}
+        vars_fit = {
+            "error_rate": error_rate,
+            "t0": t0,
+            "error_rate_100": error_rate * 100,
+        }
         vars_fit.update(variables)
         ax.plot(
             x_fit,

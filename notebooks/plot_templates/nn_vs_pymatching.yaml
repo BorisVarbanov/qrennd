@@ -23,7 +23,7 @@ NN:
   fit:
     color: "blue"
     fmt: "-"
-    label: "$\\epsilon_L$(NN) = ({error_rate})%"
+    label: "$\\epsilon_L$(NN) = ({error_rate_100})%"
     errorbar: false
     fixed_t0: false
     min_qec: *min_qec
@@ -38,7 +38,7 @@ MWPM:
   fit:
     color: "red"
     fmt: "-"
-    label: "$\\epsilon_L$(MWPM) = ({error_rate})%"
+    label: "$\\epsilon_L$(MWPM) = ({error_rate_100})%"
     errorbar: false
     fixed_t0: false
     min_qec: *min_qec
