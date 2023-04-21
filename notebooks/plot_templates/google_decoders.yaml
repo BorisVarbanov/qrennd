@@ -3,7 +3,9 @@ description: Compare Google's decoders and NN
 vars:
   EXP_NAME: "20230405-d5_rot-surf_simulated_google_60M"
   RUN_NAME: "20230419-224354_google_simulated_dr0-05_dim192_4eval"
-  MIN_QEC: &min_qec 5
+  DISTANCE: &min_qec 5
+  CENTER: "5_5"
+  BASIS: "Z"
 
 output_name: "decoders_comparison"
 output_dir: "{EXP_NAME}/{RUN_NAME}"
@@ -29,7 +31,7 @@ NN:
     min_qec: *min_qec
 
 MWPM:
-  dataset: "{EXP_NAME}/pymatching/test_experimental.nc"
+  dataset: "{EXP_NAME}/pymatching/test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
   data:
     color: "red"
     fmt: "."
@@ -44,7 +46,7 @@ MWPM:
     min_qec: *min_qec
 
 corr_M:
-  dataset: "{EXP_NAME}/correlated_matching/test_experimental.nc"
+  dataset: "{EXP_NAME}/correlated_matching/test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
   data:
     color: "orange"
     fmt: "."
@@ -59,7 +61,7 @@ corr_M:
     min_qec: *min_qec
 
 BM:
-  dataset: "{EXP_NAME}/belief_matching/test_experimental.nc"
+  dataset: "{EXP_NAME}/belief_matching/test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
   data:
     color: "green"
     fmt: "."
@@ -74,7 +76,7 @@ BM:
     min_qec: *min_qec
 
 tensor:
-  dataset: "{EXP_NAME}/tensor_network_contraction/test_experimental.nc"
+  dataset: "{EXP_NAME}/tensor_network_contraction/test_b{BASIS}_d{DISTANCE}_center_{CENTER}_exp.nc"
   data:
     color: "purple"
     fmt: "."

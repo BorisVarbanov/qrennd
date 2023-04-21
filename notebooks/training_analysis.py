@@ -5,10 +5,10 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230403-d3_rot-css-surface_circ-level_p0-001"
-MODEL_FOLDER = "20230419-224354_conv_lstm_first-try_k16-16"
-LAYOUT_NAME = "d3_rotated_layout.yaml"
-TEST_DATASET = "test"  # str or list
+EXP_NAME = "20230419-d5_simulated_high-p_google_60M"
+MODEL_FOLDER = "20230420-104056_google_simulated_dr0-05_dim192"
+LAYOUT_NAME = "d5_rotated_layout.yaml"
+TEST_DATASET = ["test", "test_experimental"]
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.

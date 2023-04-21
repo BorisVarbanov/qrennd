@@ -15,7 +15,7 @@ from qrennd.utils.analysis import (
 )
 
 # %%
-TEMPLATE = "nn_vs_pymatching.yaml"
+TEMPLATE = "nn_vs_pymatching_assign.yaml"
 
 # %%
 PATH_TEMPLATES = pathlib.Path.cwd() / "plot_templates"
@@ -33,7 +33,9 @@ def format(string: str, formatter: dict) -> str:
 DIR = pathlib.Path.cwd() / "output"
 
 NON_DATASETS = ["description", "vars", "figure", "output_name", "output_dir"]
-datasets = [v for k, v in setup.items() if k not in NON_DATASETS]
+datasets = [[k, v] for k, v in setup.items() if k not in NON_DATASETS]
+datasets = sorted(datasets, key=lambda x: x[0])
+datasets = [v for k, v in datasets]
 variables = setup.get("vars")
 
 # %%

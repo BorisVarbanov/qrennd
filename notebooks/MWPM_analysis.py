@@ -16,10 +16,10 @@ import pymatching
 import stim
 
 # %%
-EXP_NAME = "20230412-d3_rot-surf_no-Y_no-assign"
-MODEL_FOLDER = "MWPM"
-LAYOUT_NAME = "d3_rotated_layout.yaml"
-DATASET_NAME = "test_MWPM_assign0-010"
+EXP_NAME = "20230419-d5_simulated_high-p_google_60M"
+MODEL_FOLDER = "pymatching"
+LAYOUT_NAME = "d5_rotated_layout.yaml"
+DATASET_NAME = "test"
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.

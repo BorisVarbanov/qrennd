@@ -1,9 +1,10 @@
-description: Compare NN and MWPM
+description: Compare NN and MWPM when using probabilities of defects
 
 vars:
-  EXP_NAME: "20230405-d5_rot-surf_simulated_google_60M"
-  RUN_NAME: "20230419-224354_google_simulated_dr0-05_dim192_4eval"
-  MIN_QEC: &min_qec 5
+  EXP_NAME: "20230412-d3_rot-surf_no-Y_no-assign"
+  RUN_NAME: "20230417-144805_Boris_config_assign0-100_lr0-002"
+  MIN_QEC: &min_qec 3
+  ASSIGN_ERROR: "0-100"
 
 output_name: "NN_vs_MWPM"
 output_dir: "{EXP_NAME}/{RUN_NAME}"
@@ -23,13 +24,13 @@ figure:
   fit:
     color: "blue"
     fmt: "-"
-    label: "$\\epsilon_L$(NN) = ({error_rate_100})%"
+    label: "$\\epsilon_L$ = ({error_rate_100})%"
     errorbar: false
     fixed_t0: false
     min_qec: *min_qec
 
 1_MWPM:
-  dataset: "{EXP_NAME}/pymatching/test.nc"
+  dataset: "{EXP_NAME}/MWPM/test_MWPM_assign{ASSIGN_ERROR}.nc"
   data:
     color: "red"
     fmt: "."
@@ -38,7 +39,7 @@ figure:
   fit:
     color: "red"
     fmt: "-"
-    label: "$\\epsilon_L$(MWPM) = ({error_rate_100})%"
+    label: "$\\epsilon_L$ = ({error_rate_100})%"
     errorbar: false
     fixed_t0: false
     min_qec: *min_qec
