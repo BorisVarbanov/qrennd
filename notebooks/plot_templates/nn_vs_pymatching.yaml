@@ -1,0 +1,44 @@
+description: Compare NN and MWPM
+
+vars:
+  EXP_NAME: "20230405-d5_rot-surf_simulated_google_60M"
+  RUN_NAME: "20230419-224354_google_simulated_dr0-05_dim192_4eval"
+  MIN_QEC: &min_qec 5
+
+output_name: "NN_vs_MWPM"
+output_dir: "{EXP_NAME}/{RUN_NAME}"
+
+figure:
+  title: "exp={EXP_NAME}\nrun={RUN_NAME}"
+  legend: true
+  grid: true
+
+NN:
+  dataset: "{EXP_NAME}/{RUN_NAME}/test.nc"
+  data:
+    color: "blue"
+    fmt: "."
+    label: "NN"
+    errorbar: false
+  fit:
+    color: "blue"
+    fmt: "-"
+    label: "$\\epsilon_L$(NN) = ({error_rate})%"
+    errorbar: false
+    fixed_t0: false
+    min_qec: *min_qec
+
+MWPM:
+  dataset: "{EXP_NAME}/pymatching/test.nc"
+  data:
+    color: "red"
+    fmt: "."
+    label: "MWPM"
+    errorbar: false
+  fit:
+    color: "red"
+    fmt: "-"
+    label: "$\\epsilon_L$(MWPM) = ({error_rate})%"
+    errorbar: false
+    fixed_t0: false
+    min_qec: *min_qec
