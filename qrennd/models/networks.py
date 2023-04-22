@@ -38,6 +38,36 @@ def lstm_network(
             yield dropout_layer
 
 
+def gru_network(
+    name: str,
+    units: List[int],
+    dropout_rates: Optional[List[opt_float]] = None,
+    return_sequences: bool = False,
+) -> Network:
+    num_layers = len(units)
+    dropout_rates = dropout_rates or list(repeat(None, num_layers))
+
+    if len(dropout_rates) != num_layers:
+        raise ValueError(
+            f"Mismatch between the number of GRU layers ({num_layers})"
+            "and the number of GRU dropout rate after each layer."
+        )
+
+    inds = range(1, num_layers + 1)
+    for ind, layer_units, rate in zip(inds, units, dropout_rates):
+        layer_name = f"{name}-{ind}"
+        return_seq = (ind != num_layers) or return_sequences
+
+        gru_layer = keras.layers.GRU(
+            units=layer_units, return_sequences=return_seq, name=layer_name
+        )
+        yield gru_layer
+
+        if rate:
+            dropout_layer = keras.layers.Dropout(rate, name=f"dropout_{layer_name}")
+            yield dropout_layer
+
+
 def conv_lstm_network(
     name: str,
     filters: List[int],
