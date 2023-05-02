@@ -16,10 +16,10 @@ import pymatching
 import stim
 
 # %%
-EXP_NAME = "20230419-d5_simulated_high-p_google_60M"
+EXP_NAME = "20230428-d3_xzzx-google_no-assign"
 MODEL_FOLDER = "pymatching"
-LAYOUT_NAME = "d5_rotated_layout.yaml"
-DATASET_NAME = "test"
+LAYOUT_NAME = "d3_rotated_layout.yaml"
+DATASET_NAME = "test_MWPM_assign0-010"
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -126,7 +126,7 @@ config = Config.from_yaml(
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-FILE_NAME = DATASET_NAME + "_results.nc"
+FILE_NAME = DATASET_NAME + ".nc"
 if not (DIR / FILE_NAME).exists():
     print("Evaluating MWPM...")
 
@@ -138,7 +138,6 @@ log_fid = xr.load_dataset(DIR / FILE_NAME)
 # %%
 x = log_fid.qec_round.values
 y = log_fid.avg.values
-yerr = log_fid.err.values
 
 fig, ax = plt.subplots()
 
@@ -157,7 +156,7 @@ for FIXED_TO, fmt in zip([True, False], ["b--", "b-"]):
 
     ax.plot(x_fit, y_fit, fmt, label=label)
 
-ax.errorbar(x, y, yerr=yerr, fmt="b.", capsize=2, label="MWPM")
+ax.plot(x, y, "b.", label="MWPM")
 
 ax.set_xlabel("QEC round")
 ax.set_ylabel("logical fidelity")
