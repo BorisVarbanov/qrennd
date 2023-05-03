@@ -68,47 +68,40 @@ plt.show()
 # # Evaluation
 
 # %%
-import xarray as xr
-import copy
+from itertools import product
 
-from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
+import xarray as xr
+
+from qrennd import Config, Layout, get_model, load_datasets
 
 
 # %%
 def evaluate_model(model, config, layout, dataset_name="test"):
-    callbacks = get_callbacks(config)
-    outputs = {}
-    for rounds in config.dataset[dataset_name]["rounds"]:
-        print("QEC round = ", rounds, end="\r")
-        config_ = copy.deepcopy(config)
-        config_.dataset[dataset_name]["rounds"] = [rounds]
-        config_.train["batch_size"] = 1_000
-        test_data = load_datasets(
-            config=config_, layout=layout, dataset_name=dataset_name, concat=False
+    test_data = load_datasets(
+        config=config, layout=layout, dataset_name=dataset_name, concat=False
+    )
+    rounds = config.dataset[dataset_name]["rounds"]
+    states = config.dataset[dataset_name]["states"]
+    num_shots = config.dataset[dataset_name]["shots"]
+    sequences = product(rounds, states)
+    list_errors = []
+
+    for data, k in zip(test_data, sequences):
+        print(f"QEC = {k[0]} | state = {k[1]}", end="\r")
+        prediction = model.predict(data, verbose=0)
+        prediction = (prediction[0] > 0.5).flatten()
+        errors = prediction != data.log_errors
+        list_errors.append(errors)
+        print(
+            f"QEC = {k[0]} | state = {k[1]} | avg_errors = {np.average(errors):.4f}",
+            end="\r",
         )
 
-        correct = []
-        for data in test_data:
-            output = model.predict(
-                data,
-                verbose=0,
-            )
-            output = output[0] > 0.5
-            log_errors = np.array(data.log_errors)
-            correct.append(output.flatten() == log_errors.flatten())
-
-        correct = np.array(correct).flatten()
-        accuracy = np.average(correct)
-        std = np.std(correct)
-        outputs[rounds] = {"acc": accuracy, "std": std}
-
-    accuracy = np.array([outputs[rounds]["acc"] for rounds in outputs])
-    std = np.array([outputs[rounds]["std"] for rounds in outputs])
-    qec_rounds = list(outputs.keys())
+    list_errors = np.array(list_errors).reshape(len(rounds), len(states), num_shots)
 
     log_fid = xr.Dataset(
-        data_vars=dict(avg=(["qec_round"], accuracy), err=(["qec_round"], std)),
-        coords=dict(qec_round=qec_rounds),
+        data_vars=dict(errors=(["qec_round", "state", "shot"], list_errors)),
+        coords=dict(qec_round=rounds, state=states, shot=list(range(1, num_shots + 1))),
     )
 
     return log_fid
