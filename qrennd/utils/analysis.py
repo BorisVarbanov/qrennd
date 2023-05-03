@@ -11,11 +11,11 @@ def error_prob(predictions: ndarray, values: ndarray) -> float:
 
 
 def error_prob_decay(
-    qec_round: Union[int, ndarray],
+    x: Union[int, ndarray],
     error_rate: float,
     t0: float,
 ) -> Union[int, ndarray]:
-    return 0.5 - 0.5 * (1 - 2 * error_rate) ** (qec_round - t0)
+    return 0.5 - 0.5 * (1 - 2 * error_rate) ** (x - t0)
 
 
 class LogicalError(lmfit.model.Model):

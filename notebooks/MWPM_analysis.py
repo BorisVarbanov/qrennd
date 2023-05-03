@@ -3,12 +3,12 @@ import pathlib
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from itertools import product
 
 import xarray as xr
 import copy
 from qrennd.utils.analysis import (
-    logical_fidelity,
-    LogicalFidelityDecay,
+    LogicalError,
     lmfit_par_to_ufloat,
 )
 from qrennd import Config, Layout, load_datasets
@@ -46,58 +46,54 @@ if not LAYOUT_FILE.exists():
 
 # %%
 def evaluate_MWPM(config, layout, dataset_name="test"):
-    list_errors = []
+    # metadata
+    experiment_name = config.dataset["folder_format_name"]
+    dataset_params = config.dataset[dataset_name]
+    dataset_dir = config.experiment_dir / dataset_name
+    basis = "X" if config.dataset["rot_basis"] else "Z"
 
-    for rounds in config.dataset[dataset_name]["rounds"]:
-        print("QEC round = ", rounds, end="\r")
-        config_ = copy.deepcopy(config)
-        config_.dataset[dataset_name]["rounds"] = [rounds]
-        config_.train["batch_size"] = config_.dataset[dataset_name]["shots"]
-        test_data = load_datasets(
-            config=config_, layout=layout, dataset_name=dataset_name
-        )
-
-        # metadata
-        experiment_name = config_.dataset["folder_format_name"]
-        dataset_params = config_.dataset[dataset_name]
-        dataset_dir = config_.experiment_dir / dataset_name
-        rot_basis = config_.dataset["rot_basis"]
-        basis = "X" if rot_basis else "Z"
-
-        for batch, state in zip(test_data, dataset_params["states"]):
-            # assuming there is no reshufling in the test_data
-
-            # reshape data for pymatching
-            inputs, log_errors = batch
-            anc_defects = np.array(inputs["rec_input"])
-            anc_defects = anc_defects.reshape(
-                anc_defects.shape[0], anc_defects.shape[1] * anc_defects.shape[2]
-            )
-            final_defects = np.array(inputs["eval_input"])
-            defects = np.concatenate([anc_defects, final_defects], axis=1)
-            log_errors = log_errors.astype(int)  # convert from float
-
-            # load MWPM decoder
-            experiment = experiment_name.format(
-                basis=basis,
-                state=state,
-                num_rounds=rounds,
-                **dataset_params,
-            )
-            detector_error_model = stim.DetectorErrorModel.from_file(
-                dataset_dir / experiment / "detector_error_model.dem"
-            )
-            MWPM = pymatching.Matching(detector_error_model)
-
-            # decode and log fidelity
-            predictions = np.array([MWPM.decode(i) for i in defects])
-            errors = predictions.flatten() != log_errors.flatten()
-
-            list_errors.append(errors)
-
+    # dataset
+    test_data = load_datasets(
+        config=config, layout=layout, dataset_name=dataset_name, concat=False
+    )
     rounds = config.dataset[dataset_name]["rounds"]
     states = config.dataset[dataset_name]["states"]
     num_shots = config.dataset[dataset_name]["shots"]
+    sequences = product(rounds, states)
+    list_errors = []
+
+    for data, (num_rounds, state) in zip(test_data, sequences):
+        print(f"QEC = {num_rounds} | state = {state}", end="\r")
+        anc_defects = data.rec_input
+        final_defects = data.eval_input
+        log_errors = data.log_errors
+
+        # reshape data for MWPM
+        anc_defects = anc_defects.reshape(
+            anc_defects.shape[0], anc_defects.shape[1] * anc_defects.shape[2]
+        )
+        defects = np.concatenate([anc_defects, final_defects], axis=1)
+
+        # load MWPM decoder
+        experiment = experiment_name.format(
+            basis=basis,
+            state=state,
+            num_rounds=num_rounds,
+            **dataset_params,
+        )
+        detector_error_model = stim.DetectorErrorModel.from_file(
+            dataset_dir / experiment / "detector_error_model.dem"
+        )
+        MWPM = pymatching.Matching(detector_error_model)
+
+        # decode
+        predictions = np.array([MWPM.decode(i) for i in defects])
+        errors = predictions.flatten() != log_errors.flatten()
+        list_errors.append(errors)
+        print(
+            f"QEC = {num_rounds} | state = {state} | avg_errors = {np.average(errors):.4f}",
+            end="\r",
+        )
 
     list_errors = np.array(list_errors).reshape(len(rounds), len(states), num_shots)
 
@@ -132,12 +128,12 @@ log_fid = xr.load_dataset(DIR / FILE_NAME)
 
 # %%
 x = log_fid.qec_round.values
-y = log_fid.avg.values
+y = log_fid.errors.mean(dim=["shot", "state"]).values
 
 fig, ax = plt.subplots()
 
 for FIXED_TO, fmt in zip([True, False], ["b--", "b-"]):
-    model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
+    model_decay = LogicalError(fixed_t0=FIXED_TO)
     params = model_decay.guess(y, x=x)
     out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
     error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
@@ -151,20 +147,18 @@ for FIXED_TO, fmt in zip([True, False], ["b--", "b-"]):
 
     ax.plot(x_fit, y_fit, fmt, label=label)
 
-ax.plot(x, y, "b.", label="MWPM")
+ax.plot(x, y, "b.")
 
 ax.set_xlabel("QEC round")
-ax.set_ylabel("logical fidelity")
+ax.set_ylabel("logical error")
 ax.set_title("MWPM")
-ax.set_ylim(0.5, 1)
+ax.set_ylim(0, 0.5)
 ax.set_xlim(0, max(x) + 1)
-ax.set_yticks(
-    np.arange(0.5, 1.01, 0.05), np.round(np.arange(0.5, 1.01, 0.05), decimals=2)
-)
+ax.set_yticks(np.arange(0, 0.51, 0.05), np.round(np.arange(0, 0.51, 0.05), decimals=2))
 ax.legend(loc="best")
 ax.grid(which="major")
 fig.tight_layout()
-fig.savefig(DIR / f"{DATASET_NAME}_log-fid_vs_QEC-round.pdf", format="pdf")
+fig.savefig(DIR / f"{DATASET_NAME}_log-err_vs_QEC-round.pdf", format="pdf")
 plt.show()
 
 # %%
