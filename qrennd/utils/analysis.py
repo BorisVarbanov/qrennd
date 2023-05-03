@@ -18,7 +18,7 @@ def error_prob_decay(
     return 0.5 - 0.5 * (1 - 2 * error_rate) ** (x - t0)
 
 
-class LogicalError(lmfit.model.Model):
+class LogicalErrorProb(lmfit.model.Model):
     """
     lmfit model with a guess for a logical fidelity decay.
     """

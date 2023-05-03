@@ -8,7 +8,7 @@ from itertools import product
 import xarray as xr
 import copy
 from qrennd.utils.analysis import (
-    LogicalError,
+    LogicalErrorProb,
     lmfit_par_to_ufloat,
 )
 from qrennd import Config, Layout, load_datasets
@@ -133,7 +133,7 @@ y = log_fid.errors.mean(dim=["shot", "state"]).values
 fig, ax = plt.subplots()
 
 for FIXED_TO, fmt in zip([True, False], ["b--", "b-"]):
-    model_decay = LogicalError(fixed_t0=FIXED_TO)
+    model_decay = LogicalErrorProb(fixed_t0=FIXED_TO)
     params = model_decay.guess(y, x=x)
     out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
     error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
