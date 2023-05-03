@@ -19,7 +19,7 @@ import stim
 EXP_NAME = "20230428-d3_xzzx-google_no-assign"
 MODEL_FOLDER = "pymatching"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
-DATASET_NAME = "test_MWPM_assign0-010"
+DATASET_NAME = "test"
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
