@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 # %%
 EXP_NAME = "20230428-d3_xzzx-google_no-assign"
-MODEL_FOLDER = "20230502-091707_Boris_config_assign-0-010_digitized"
+MODEL_FOLDER = "20230501-161610_Boris_config_no-assign-errors"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
 TEST_DATASET = ["test"]
 
@@ -86,14 +86,14 @@ def evaluate_model(model, config, layout, dataset_name="test"):
     sequences = product(rounds, states)
     list_errors = []
 
-    for data, k in zip(test_data, sequences):
-        print(f"QEC = {k[0]} | state = {k[1]}", end="\r")
+    for data, (num_rounds, state) in zip(test_data, sequences):
+        print(f"QEC = {num_rounds} | state = {state}", end="\r")
         prediction = model.predict(data, verbose=0)
         prediction = (prediction[0] > 0.5).flatten()
         errors = prediction != data.log_errors
         list_errors.append(errors)
         print(
-            f"QEC = {k[0]} | state = {k[1]} | avg_errors = {np.average(errors):.4f}",
+            f"QEC = {num_rounds} | state = {state} | avg_errors = {np.average(errors):.4f}",
             end="\r",
         )
 
