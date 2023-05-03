@@ -109,6 +109,9 @@ def get_defect_probs(
     prob_product = anc_probs.dot(shifted_probs, dims="state")
     defect_probs = 1 - prob_product.fillna(anc_probs.sel(state=0))
     defect_probs = xr.where(ideal_defects, 1 - defect_probs, defect_probs)
+    # reshape into (shots, qec_round, anc_qubit) because ideal_defects does
+    # not have "shot" dimension and messes the order of the coordinates
+    defect_probs = defect_probs.transpose("shot", "qec_round", "anc_qubit")
 
     return defect_probs
 
@@ -187,6 +190,9 @@ def get_final_defect_probs(
     final_defect_probs = xr.where(
         ideal_final_defects, 1 - final_defect_probs, final_defect_probs
     )
+    # reshape into (shots, qec_round, anc_qubit) because ideal_defects does
+    # not have "shot" dimension and messes the order of the coordinates
+    final_defect_probs = final_defect_probs.transpose("shot", "anc_qubit")
 
     return final_defect_probs
 
