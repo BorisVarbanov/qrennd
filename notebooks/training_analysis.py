@@ -5,10 +5,10 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # %%
-EXP_NAME = "20230310-d3_rot-surf_circ-level_meas-reset"
-MODEL_FOLDER = "20230315-164612_Boris_config_defects"
+EXP_NAME = "20230428-d3_xzzx-google_no-assign"
+MODEL_FOLDER = "20230501-161610_Boris_config_no-assign-errors"
 LAYOUT_NAME = "d3_rotated_layout.yaml"
-FIXED_TO = False
+TEST_DATASET = ["test"]
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -41,8 +41,6 @@ dataframe
 
 # %%
 METRICS = ("loss", "main_output_accuracy")
-acc_MWPM = None
-goal = None
 
 for metric in METRICS:
     fig, ax = plt.subplots()
@@ -55,12 +53,6 @@ for metric in METRICS:
         color="orange",
         label="Validation",
     )
-
-    if metric == "main_output_accuracy":
-        if acc_MWPM is not None:
-            ax.axhline(y=acc_MWPM, linestyle="--", color="gray", label="MWPM (test)")
-        if goal is not None:
-            ax.axhline(y=goal, linestyle="--", color="black", label="goal")
 
     ax.legend(frameon=False)
     ax.set_xlabel("Epochs")
@@ -76,52 +68,40 @@ plt.show()
 # # Evaluation
 
 # %%
+from itertools import product
+
 import xarray as xr
-import copy
-from qrennd import get_model, Config
-from qrennd.utils.analysis import (
-    logical_fidelity,
-    LogicalFidelityDecay,
-    lmfit_par_to_ufloat,
-)
-from qrennd import Config, Layout, get_callbacks, get_model, load_datasets
+
+from qrennd import Config, Layout, get_model, load_datasets
 
 
 # %%
 def evaluate_model(model, config, layout, dataset_name="test"):
-    callbacks = get_callbacks(config)
-    outputs = {}
-    for rounds in config.dataset[dataset_name]["rounds"]:
-        print("QEC round = ", rounds, end="\r")
-        config_ = copy.deepcopy(config)
-        config_.dataset[dataset_name]["rounds"] = [rounds]
-        config_.train["batch_size"] = config_.dataset[dataset_name]["shots"]
-        test_data = load_datasets(
-            config=config_, layout=layout, dataset_name=dataset_name, concat=False
+    test_data = load_datasets(
+        config=config, layout=layout, dataset_name=dataset_name, concat=False
+    )
+    rounds = config.dataset[dataset_name]["rounds"]
+    states = config.dataset[dataset_name]["states"]
+    num_shots = config.dataset[dataset_name]["shots"]
+    sequences = product(rounds, states)
+    list_errors = []
+
+    for data, (num_rounds, state) in zip(test_data, sequences):
+        print(f"QEC = {num_rounds} | state = {state}", end="\r")
+        prediction = model.predict(data, verbose=0)
+        prediction = (prediction[0] > 0.5).flatten()
+        errors = prediction != data.log_errors
+        list_errors.append(errors)
+        print(
+            f"QEC = {num_rounds} | state = {state} | avg_errors = {np.average(errors):.4f}",
+            end="\r",
         )
 
-        correct = []
-        for data in test_data:
-            inputs, log_errors = data[0]
-            output = model.predict(
-                data,
-                verbose=0,
-            )
-            output = output[0] > 0.5
-            correct.append(output.flatten() == log_errors)
-
-        correct = np.array(correct).flatten()
-        accuracy = np.average(correct)
-        std = np.std(correct)
-        outputs[rounds] = {"acc": accuracy, "std": std}
-
-    accuracy = np.array([outputs[rounds]["acc"] for rounds in outputs])
-    std = np.array([outputs[rounds]["std"] for rounds in outputs])
-    qec_rounds = list(outputs.keys())
+    list_errors = np.array(list_errors).reshape(len(rounds), len(states), num_shots)
 
     log_fid = xr.Dataset(
-        data_vars=dict(avg=(["qec_round"], accuracy), err=(["qec_round"], std)),
-        coords=dict(qec_round=qec_rounds),
+        data_vars=dict(errors=(["qec_round", "state", "shot"], list_errors)),
+        coords=dict(qec_round=rounds, state=states, shot=list(range(1, num_shots + 1))),
     )
 
     return log_fid
@@ -134,119 +114,48 @@ config = Config.from_yaml(
     data_dir=DATA_DIR,
     output_dir=OUTPUT_DIR,
 )
+if not isinstance(TEST_DATASET, list):
+    TEST_DATASET = [TEST_DATASET]
 
 # %%
 # if results have not been stored, evaluate model
 DIR = OUTPUT_DIR / EXP_NAME / MODEL_FOLDER
-if not (DIR / "test_results.nc").exists():
-    print("Evaluating model...")
+for test_dataset in TEST_DATASET:
+    NAME = f"{test_dataset}.nc"
+    if not (DIR / NAME).exists():
+        print("Evaluating model...")
 
-    anc_qubits = layout.get_qubits(role="anc")
-    num_anc = len(anc_qubits)
+        anc_qubits = layout.get_qubits(role="anc")
+        num_anc = len(anc_qubits)
 
-    if config.model["type"] in ("ConvLSTM", "Conv_LSTM"):
-        rec_features = (layout.distance + 1, layout.distance + 1, 1)
-    else:
-        rec_features = num_anc
+        if config.model["type"] in ("ConvLSTM", "Conv_LSTM"):
+            rec_features = (layout.distance + 1, layout.distance + 1, 1)
+        else:
+            rec_features = num_anc
 
-    if config.dataset["input"] == "measurements":
-        data_qubits = layout.get_qubits(role="data")
-        eval_features = len(data_qubits)
-    else:
-        eval_features = int(num_anc / 2)
+        if config.dataset["input"] == "measurements":
+            data_qubits = layout.get_qubits(role="data")
+            eval_features = len(data_qubits)
+        else:
+            eval_features = int(num_anc / 2)
 
-    model = get_model(
-        rec_features=rec_features,
-        eval_features=eval_features,
-        config=config,
-    )
-
-    model.load_weights(DIR / "checkpoint/weights.hdf5")
-    log_fid = evaluate_model(model, config, layout, "test")
-    log_fid.to_netcdf(path=DIR / "test_results.nc")
-
-log_fid = xr.load_dataset(DIR / "test_results.nc")
-NN_log_fid = log_fid.avg.values
-NN_log_fid_std = log_fid.err.values
-NN_qec_round = log_fid.qec_round.values
-
-# %%
-MWPM_data = OUTPUT_DIR / EXP_NAME / "MWPM" / "test_results.nc"
-if not MWPM_data.exists():
-    print(
-        (
-            f"File not found: {MWPM_data}\n"
-            "Run 'MWPM_analysis.py' to generate MWPM data"
+        model = get_model(
+            rec_features=rec_features,
+            eval_features=eval_features,
+            config=config,
         )
-    )
-    MWPM_data = False
-    MAX_QEC = np.max(log_fid.qec_round.values)
-else:
-    MWPM_data = xr.load_dataset(MWPM_data)
-    MPWM_log_fid = MWPM_data.avg.values
-    MPWM_log_fid_std = MWPM_data.err.values
-    MWPM_qec_round = MWPM_data.qec_round.values
-    MAX_QEC = int(min(np.max(log_fid.qec_round.values), np.max(MWPM_qec_round)))
 
-# %%
-fig, ax = plt.subplots()
+        model.load_weights(DIR / "checkpoint/weights.hdf5")
+        log_fid = evaluate_model(model, config, layout, test_dataset)
+        log_fid.to_netcdf(path=DIR / NAME)
 
-if MWPM_data:
-    x = MWPM_qec_round
-    y = MPWM_log_fid
-    ax.errorbar(
-        x, y, yerr=MPWM_log_fid_std, fmt="b.", markersize=10, capsize=2, label="MWPM"
-    )
+        print("Done!")
 
-    for FIXED_TO, fmt in zip([True, False], ["b--", "b-"]):
-        model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
-        params = model_decay.guess(y, x=x)
-        out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
-        error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
-        t0 = lmfit_par_to_ufloat(out.params["t0"])
+    else:
+        print("Model already evaluated!")
 
-        x_fit = np.linspace(layout.distance, max(x), 100)
-        y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
-        label = f"$\\epsilon_L = (${error_rate*100})%"
-        if FIXED_TO:
-            label += "\nwith fixed $t_0 = 0$"
-
-        ax.plot(x_fit, y_fit, fmt, label=label)
-
-x = NN_qec_round
-y = NN_log_fid
-ax.errorbar(x, y, yerr=NN_log_fid_std, fmt="r.", markersize=10, capsize=2, label="NN")
-
-for FIXED_TO, fmt in zip([True, False], ["r--", "r-"]):
-    model_decay = LogicalFidelityDecay(fixed_t0=FIXED_TO)
-    params = model_decay.guess(y, x=x)
-    out = model_decay.fit(y, params, x=x, min_qec=layout.distance)
-    error_rate = lmfit_par_to_ufloat(out.params["error_rate"])
-    t0 = lmfit_par_to_ufloat(out.params["t0"])
-
-    x_fit = np.linspace(layout.distance, max(x), 100)
-    y_fit = model_decay.func(x_fit, error_rate.nominal_value, t0.nominal_value)
-    label = f"$\\epsilon_L = (${error_rate*100})%"
-    if FIXED_TO:
-        label += "\nwith fixed $t_0 = 0$"
-
-    ax.plot(x_fit, y_fit, fmt, label=label)
-
-ax.set_xlabel("QEC round")
-ax.set_ylabel("logical fidelity")
-ax.set_xlim(0, MAX_QEC + 1)
-ax.set_ylim(0.5, 1)
-ax.set_yticks(
-    np.arange(0.5, 1.01, 0.05), np.round(np.arange(0.5, 1.01, 0.05), decimals=2)
-)
-ax.legend(loc="best")
-ax.grid(which="major")
-fig = ax.get_figure()
-fig.tight_layout()
-fig.savefig(DIR / "log-fid_vs_qec-round.pdf", format="pdf")
-fig.savefig(DIR / "log-fid_vs_qec-round.png", format="png")
-plt.show()
-
-# %%
-
-# %%
+    print("\nRESULTS IN:")
+    print("output_dir=", NOTEBOOK_DIR)
+    print("exp_name=", EXP_NAME)
+    print("run_name=", MODEL_FOLDER)
+    print("test_data=", test_dataset)
