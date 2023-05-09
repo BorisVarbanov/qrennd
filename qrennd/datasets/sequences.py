@@ -169,3 +169,8 @@ class Sequence(BaseSequence):
             return inputs, outputs
 
         return inputs, log_errors
+
+    def values(self):
+        inputs = dict(rec_input=self.rec_input, eval_input=self.eval_input)
+        outputs = self.log_errors
+        return inputs, outputs
