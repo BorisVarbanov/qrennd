@@ -4,11 +4,13 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
+from qrennd import set_coords
+
 # %%
-EXP_NAME = "20230428-d3_xzzx-google_no-assign"
-MODEL_FOLDER = "20230501-161610_Boris_config_no-assign-errors"
-LAYOUT_NAME = "d3_rotated_layout.yaml"
-TEST_DATASET = ["test"]
+EXP_NAME = "20230508-d5_simulated_google_bX_60M"
+MODEL_FOLDER = "20230508-152319_best_config_bZ"
+LAYOUT_NAME = "d5_rotated_layout.yaml"
+TEST_DATASET = ["dev"]
 
 # %%
 NOTEBOOK_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
@@ -109,6 +111,7 @@ def evaluate_model(model, config, layout, dataset_name="test"):
 
 # %%
 layout = Layout.from_yaml(LAYOUT_FILE)
+set_coords(layout)
 config = Config.from_yaml(
     filepath=CONFIG_FILE,
     data_dir=DATA_DIR,
