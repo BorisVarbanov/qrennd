@@ -173,3 +173,6 @@ events.out.tfevents*
 *.err
 *.out
 *.txt
+
+# too many config files being donwloaded
+notebooks
