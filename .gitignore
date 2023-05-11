@@ -173,3 +173,6 @@ events.out.tfevents*
 *.err
 *.out
 *.txt
+
+# Ignore the notebook directory with analysis notebooks
+notebooks
