@@ -1,118 +1,155 @@
-from itertools import count, product
-from typing import Dict
+from collections import defaultdict
+from functools import partial
+from itertools import count, cycle, product
+from typing import Dict, Tuple
 
 from .layout import Layout
 
 
-def surf_code_layout(distance: int) -> Layout:
-    _check_distance(distance)
-
-    layout_dict = dict(
-        name="Distance-{} rotated surface code layout".format(distance),
-    )
-    qubit_info_dict = dict()
-
-    for row_ind, col_ind in product(range(distance), repeat=2):
-        freq_group = "low" if row_ind % 2 == 0 else "high"
-        qubit = f"D{(row_ind*distance + col_ind) + 1}"
-        qubit_info = dict(
-            qubit=qubit,
-            role="data",
-            coords=None,
-            freq_group=freq_group,
-            neighbors=dict(),
-        )
-        qubit_info_dict[qubit] = qubit_info
-
-    num_anc = int(0.5 * (distance**2 - 1))
-    for stab_type in ["x_type", "z_type"]:
-        for anc_ind in range(1, num_anc + 1):
-            qubit = f"Z{anc_ind}" if stab_type == "z_type" else f"X{anc_ind}"
-            qubit_info = dict(
-                qubit=qubit,
-                role="anc",
-                coords=None,
-                freq_group="mid",
-                stab_type=stab_type,
-                neighbors=dict(),
-            )
-            qubit_info_dict[qubit] = qubit_info
-
-    z_anc_index = count(1)
-
-    for row_ind in range(1, distance):
-        for col_ind in range(1 if row_ind % 2 == 0 else 0, distance + 1, 2):
-            anc_cord = (row_ind, col_ind)
-            anc_qubit = f"Z{next(z_anc_index)}"
-
-            _init_ind = 0 if col_ind == 0 else col_ind - 1
-            _end_ind = col_ind if col_ind == distance else col_ind + 1
-            row_range = (row_ind - 1, row_ind + 1)
-            col_range = (_init_ind, _end_ind)
-            neighbors = _data_nighbors(row_range, col_range, anc_cord, distance)
-            for data_qubit, data_dir in neighbors:
-                qubit_info_dict[anc_qubit]["neighbors"][data_dir] = data_qubit
-                anc_dir = _opposite_dir(data_dir)
-                qubit_info_dict[data_qubit]["neighbors"][anc_dir] = anc_qubit
-
-    x_anc_index = count(1)
-
-    for row_ind in range(distance + 1):
-        for col_ind in range(2 if row_ind % 2 == 0 else 1, distance, 2):
-            anc_cord = (row_ind, col_ind)
-            anc_qubit = f"X{next(x_anc_index)}"
-
-            _init_ind = 0 if row_ind == 0 else row_ind - 1
-            _end_ind = row_ind if row_ind == distance else row_ind + 1
-            row_range = (_init_ind, _end_ind)
-            col_range = (col_ind - 1, col_ind + 1)
-            neighbors = _data_nighbors(row_range, col_range, anc_cord, distance)
-
-            for data_qubit, data_dir in neighbors:
-                qubit_info_dict[anc_qubit]["neighbors"][data_dir] = data_qubit
-                anc_dir = _opposite_dir(data_dir)
-                qubit_info_dict[data_qubit]["neighbors"][anc_dir] = anc_qubit
-
-    add_missing_neighbours(qubit_info_dict)
-    layout_dict["layout"] = list(qubit_info_dict.values())  # type: ignore
-    layout = Layout(layout_dict)
-    return layout
+def get_data_index(row: int, col: int, distance: int, start_ind: int = 1) -> int:
+    row_ind = row // 2
+    col_ind = col // 2
+    index = start_ind + (row_ind * distance) + col_ind
+    return index
 
 
-def add_missing_neighbours(qubit_info: Dict) -> None:
+def shift_direction(row_shift: int, col_shift: int) -> str:
+    ver_direction = "north" if row_shift > 0 else "south"
+    hor_direction = "east" if col_shift > 0 else "west"
+    direction = f"{ver_direction}_{hor_direction}"
+    return direction
+
+
+def invert_shift(row_shift: int, col_shift: int) -> Tuple[int, int]:
+    return -row_shift, -col_shift
+
+
+def is_valid(row: int, col: int, max_size: int) -> bool:
+    if not 0 <= row < max_size:
+        return False
+    if not 0 <= col < max_size:
+        return False
+    return True
+
+
+def add_missing_neighbours(neighbor_data: Dict) -> None:
     directions = ["north_east", "north_west", "south_east", "south_west"]
-    for info_dict in qubit_info.values():
-        neighbors = info_dict["neighbors"]
-
+    for neighbors in neighbor_data.values():
         for dir in directions:
             if dir not in neighbors:
                 neighbors[dir] = None
 
 
-def _opposite_dir(direction):
-    ver_dir, hor_dir = direction.split("_")
-    op_ver_dir = "south" if ver_dir == "north" else "north"
-    op_hor_dir = "west" if hor_dir == "east" else "east"
-    return f"{op_ver_dir}_{op_hor_dir}"
+def rot_surf_code(distance: int) -> Layout:
+    _check_distance(distance)
 
+    name = f"Rotated d-{distance} surface code layout."
+    description = None
 
-def _data_dir(data_cord, anc_cord):
-    data_row, data_col = data_cord
-    anc_row, anc_col = anc_cord
-    ver_dir = "north" if data_row < anc_row else "south"
-    hor_dir = "west" if data_col < anc_col else "east"
-    direction = "{}_{}".format(ver_dir, hor_dir)
-    return direction
+    freq_order = ["low", "mid", "high"]
 
+    int_order = dict(
+        x_type=["north_east", "north_west", "south_east", "south_west"],
+        z_type=["north_east", "south_east", "north_west", "south_west"],
+    )
 
-def _data_nighbors(row_range, col_range, anc_cord, dist):
-    neighbours = []
-    for row_ind in range(*row_range):
-        for col_ind in range(*col_range):
-            data_qubit = f"D{row_ind*dist + col_ind + 1}"
-            direction = _data_dir((row_ind, col_ind), anc_cord)
-            neighbours.append((data_qubit, direction))
-    return neighbours
+    layout_setup = dict(
+        name=name,
+        description=description,
+        distance=distance,
+        freq_order=freq_order,
+        interaction_order=int_order,
+    )
+
+    grid_size = 2 * distance + 1
+    data_indexer = partial(get_data_index, distance=distance, start_ind=1)
+    valid_coord = partial(is_valid, max_size=grid_size)
+
+    pos_shifts = (1, -1)
+    nbr_shifts = tuple(product(pos_shifts, repeat=2))
+
+    layout_data = []
+    neighbor_data = defaultdict(dict)
+
+    freq_seq = cycle(("low", "high"))
+
+    for row in range(1, grid_size, 2):
+        freq_group = next(freq_seq)
+        for col in range(1, grid_size, 2):
+            index = data_indexer(row, col)
+
+            qubit_info = dict(
+                qubit=f"D{index}",
+                role="data",
+                coords=[row, col],
+                freq_group=freq_group,
+                stab_type=None,
+            )
+            layout_data.append(qubit_info)
+
+    x_index = count(1)
+    for row in range(0, grid_size, 2):
+        for col in range(2 + row % 4, grid_size - 1, 4):
+            anc_qubit = f"X{next(x_index)}"
+            qubit_info = dict(
+                qubit=anc_qubit,
+                role="anc",
+                coords=[row, col],
+                freq_group="mid",
+                stab_type="x_type",
+            )
+            layout_data.append(qubit_info)
+
+            for row_shift, col_shift in nbr_shifts:
+                data_row, data_col = row + row_shift, col + col_shift
+                if not valid_coord(data_row, data_col):
+                    continue
+                data_index = data_indexer(data_row, data_col)
+                data_qubit = f"D{data_index}"
+
+                direction = shift_direction(row_shift, col_shift)
+                neighbor_data[anc_qubit][direction] = data_qubit
+
+                inv_shifts = invert_shift(row_shift, col_shift)
+                inv_direction = shift_direction(*inv_shifts)
+                neighbor_data[data_qubit][inv_direction] = anc_qubit
+
+    z_index = count(1)
+    for row in range(2, grid_size - 1, 2):
+        for col in range(row % 4, grid_size, 4):
+            anc_qubit = f"Z{next(z_index)}"
+            qubit_info = dict(
+                qubit=anc_qubit,
+                role="anc",
+                coords=[row, col],
+                freq_group="mid",
+                stab_type="z_type",
+            )
+            layout_data.append(qubit_info)
+
+            for row_shift, col_shift in nbr_shifts:
+                data_row, data_col = row + row_shift, col + col_shift
+                if not valid_coord(data_row, data_col):
+                    continue
+                data_index = data_indexer(data_row, data_col)
+                data_qubit = f"D{data_index}"
+
+                direction = shift_direction(row_shift, col_shift)
+                neighbor_data[anc_qubit][direction] = data_qubit
+
+                inv_shifts = invert_shift(row_shift, col_shift)
+                inv_direction = shift_direction(*inv_shifts)
+                neighbor_data[data_qubit][inv_direction] = anc_qubit
+
+    add_missing_neighbours(neighbor_data)
+
+    for qubit_info in layout_data:
+        qubit = qubit_info["qubit"]
+        qubit_info["neighbors"] = neighbor_data[qubit]
+
+    layout_setup["layout"] = layout_data
+    layout = Layout(layout_setup)
+    return layout
 
 
 def _check_distance(distance: int) -> None:
