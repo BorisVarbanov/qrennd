@@ -1,0 +1,41 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: qrennd
+message: >-
+  A Python package implementing a recurrent neural network
+  decoder for surface-code memory experiments
+type: software
+authors:
+  - given-names: Boris Mihailov
+    family-names: Varbanov
+    email: b.m.varbanov@tudelft.nl
+    affiliation: 'QuTech, Delft University of Technology'
+    orcid: 'https://orcid.org/0000-0001-7124-8933'
+  - given-names: Marc Serra
+    family-names: Peralta
+    email: M.SerraPeralta@student.tudelft.nl
+    affiliation: 'QuTech, Delft University of Technology'
+repository-code: 'https://github.com/BorisVarbanov/qrennd'
+abstract: >-
+  Neural-network decoders can achieve a lower logical error
+  rate compared to conventional decoders, like
+  minimum-weight perfect matching, when decoding the surface
+  code. Furthermore, these decoders require no prior
+  information about the physical error rates, making them
+  highly adaptable.
+
+
+  In this package, we implement a simple recurrent neural
+  network using the Tensorflow library.
+keywords:
+  - quantum
+  - quantum-computing
+  - quantum-error-correction
+  - surface-code
+  - neural-network-decoder
+license: Apache-2.0
+commit: 4c86873
+version: '1'
+date-released: '2023-07-07'
