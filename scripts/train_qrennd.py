@@ -20,24 +20,21 @@ SCRATH_DIR = pathlib.Path(f"/scratch/{USERNAME}")
 DATA_DIR = SCRATH_DIR / "data"
 OUTPUT_DIR = SCRATH_DIR / "output"
 
-# %%
-# Define used directories
-SCRIPT_DIR = pathlib.Path.cwd()  # define the path where the notebook is placed.
-LAYOUT_DIR = SCRIPT_DIR / "layouts"
-CONFIG_DIR = SCRIPT_DIR / "configs"
 
 # %%
 # Load setup objects
-layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
-set_coords(layout)
+CONFIG_DIR = pathlib.Path.cwd() / "configs"
 config = Config.from_yaml(
     filepath=CONFIG_DIR / CONFIG_FILE,
     data_dir=DATA_DIR,
     output_dir=OUTPUT_DIR,
 )
-
 config.log_dir.mkdir(exist_ok=True, parents=True)
 config.checkpoint_dir.mkdir(exist_ok=True, parents=True)
+
+LAYOUT_DIR = DATA_DIR / config.experiment / "config"
+layout = Layout.from_yaml(LAYOUT_DIR / LAYOUT_FILE)
+set_coords(layout)
 
 # %%
 config.to_yaml(config.run_dir / "config.yaml")

@@ -83,7 +83,9 @@ def get_state_probs(
     return state_probs
 
 
-def get_defect_probs(anc_probs: xr.DataArray) -> xr.DataArray:
+def get_defect_probs(
+    anc_probs: xr.DataArray, ideal_defects: xr.DataArray
+) -> xr.DataArray:
     """
     get_defect_probs Calculates the probability of observing a defect, given
     the probabilities of the ancilla qubits being in a given state (0 or 1).
@@ -93,6 +95,8 @@ def get_defect_probs(anc_probs: xr.DataArray) -> xr.DataArray:
     anc_probs : xr.DataArray
         The probabilities of each ancilla qubits being in a given state (0 or 1) over
         each round of the experiment.
+    ideal_defects : xr.DataArray
+        Defect values when the circuit is executed without noise
 
     Returns
     -------
@@ -104,12 +108,18 @@ def get_defect_probs(anc_probs: xr.DataArray) -> xr.DataArray:
     shifted_probs = anc_probs.shift(qec_round=round_shift)
     prob_product = anc_probs.dot(shifted_probs, dims="state")
     defect_probs = 1 - prob_product.fillna(anc_probs.sel(state=0))
+    defect_probs = xr.where(ideal_defects, 1 - defect_probs, defect_probs)
+    # reshape into (shots, qec_round, anc_qubit) because ideal_defects does
+    # not have "shot" dimension and messes the order of the coordinates
+    defect_probs = defect_probs.transpose("shot", "qec_round", "anc_qubit")
+
     return defect_probs
 
 
 def get_final_defect_probs(
     anc_probs: xr.DataArray,
     data_probs: xr.DataArray,
+    ideal_final_defects: xr.DataArray,
     proj_mat: xr.DataArray,
 ) -> xr.DataArray:
     """
@@ -124,6 +134,8 @@ def get_final_defect_probs(
     data_probs : xr.DataArray
         The probabilities of each data qubits being in a given state (0 or 1)
         at the end of the experiment.
+    ideal_final_defects : xr.DataArray
+        Final defect values when the circuit is executed without noise
     proj_mat : xr.DataArray
         The projection matrix mapping the data qubits to the qubits that stabilize them (for
         the basis that the experiment is done in).
@@ -174,6 +186,13 @@ def get_final_defect_probs(
 
         stab_defect_probs = comb_probs.prod(dim="detector").sum(dim="ind")
         final_defect_probs[..., ind] = stab_defect_probs
+
+    final_defect_probs = xr.where(
+        ideal_final_defects, 1 - final_defect_probs, final_defect_probs
+    )
+    # reshape into (shots, qec_round, anc_qubit) because ideal_defects does
+    # not have "shot" dimension and messes the order of the coordinates
+    final_defect_probs = final_defect_probs.transpose("shot", "anc_qubit")
 
     return final_defect_probs
 
@@ -296,7 +315,6 @@ def to_defect_probs(
     """
     Preprocess dataset to generate the probability of defect
     based on the soft outcomes and the logical errors.
-    Assumes ideal measurements are 0s.
 
     Parameters
     ----------
@@ -329,13 +347,22 @@ def to_defect_probs(
     anc_outcomes = xr.where(dataset.anc_meas, samples[..., 1], samples[..., 0])
 
     anc_probs = get_state_probs(anc_outcomes, means, dev_anc)
-    defect_probs = get_defect_probs(anc_probs)
+    ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
+    ideal_defects = get_defects(ideal_syndromes)
+    defect_probs = get_defect_probs(anc_probs, ideal_defects)
 
     samples = rng.normal(means, dev_data, size=(*dataset.data_meas.shape, 2))
     data_outcomes = xr.where(dataset.data_meas, samples[..., 1], samples[..., 0])
 
     data_probs = get_state_probs(data_outcomes, means, dev_data)
-    final_defect_probs = get_final_defect_probs(anc_probs, data_probs, proj_mat)
+    ideal_proj_syndrome = (dataset.ideal_data_meas @ proj_mat) % 2
+    ideal_final_defects = get_final_defects(ideal_syndromes, ideal_proj_syndrome)
+    final_defect_probs = get_final_defect_probs(
+        anc_probs,
+        data_probs,
+        ideal_final_defects=ideal_final_defects,
+        proj_mat=proj_mat,
+    )
 
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2

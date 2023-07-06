@@ -10,33 +10,21 @@ def error_prob(predictions: ndarray, values: ndarray) -> float:
     return np.mean(predictions ^ values)
 
 
-def logical_fidelity(predictions: ndarray, values: ndarray) -> float:
-    return 1 - error_prob(predictions, values)
-
-
 def error_prob_decay(
-    qec_round: Union[int, ndarray], error_rate: float
+    x: Union[int, ndarray],
+    error_rate: float,
+    t0: float,
 ) -> Union[int, ndarray]:
-    return 0.5 * (1 - (1 - 2 * error_rate) ** qec_round)
+    return 0.5 - 0.5 * (1 - 2 * error_rate) ** (x - t0)
 
 
-def logical_fidelity_decay(
-    qec_round: Union[int, ndarray], error_rate: float
-) -> Union[int, ndarray]:
-    return 1 - error_prob_decay(qec_round, error_rate)
-
-
-class LogicalFidelityDecay(lmfit.model.Model):
+class LogicalErrorProb(lmfit.model.Model):
     """
     lmfit model with a guess for a logical fidelity decay.
     """
 
     def __init__(self, fixed_t0=True):
-        # pass in the model's equation
-        def funct(x, error_rate, t0):
-            return 0.5 + 0.5 * (1 - 2 * error_rate) ** (x - t0)
-
-        super().__init__(funct)
+        super().__init__(error_prob_decay)
         self.fixed_t0 = fixed_t0
 
         # configure constraints that are independent from the data to be fitted
@@ -52,7 +40,9 @@ class LogicalFidelityDecay(lmfit.model.Model):
         # guess parameters based on the data
         deriv_data = (data[1:] - data[:-1]) / (x[1:] - x[:-1])
         data_averaged = 0.5 * (data[1:] + data[:-1])
-        error_rate_guess = 0.5 * (1 - np.exp(np.average(deriv_data / data_averaged)))
+        error_rate_guess = 0.5 * (
+            1 - np.exp(np.average(deriv_data / (data_averaged - 0.5)))
+        )
 
         self.set_param_hint("error_rate", value=error_rate_guess)
         if not self.fixed_t0:
@@ -65,8 +55,8 @@ class LogicalFidelityDecay(lmfit.model.Model):
         self,
         data: ndarray,
         params: lmfit.parameter.Parameters,
-        x: ndarray = None,
-        min_qec: int = 3,
+        x: ndarray,
+        min_qec: int = 1,
         **kws
     ):
         """
