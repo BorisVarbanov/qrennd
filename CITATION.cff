@@ -13,10 +13,11 @@ authors:
     email: b.m.varbanov@tudelft.nl
     affiliation: 'QuTech, Delft University of Technology'
     orcid: 'https://orcid.org/0000-0001-7124-8933'
-  - given-names: Marc Serra
-    family-names: Peralta
+  - given-names: Marc
+    family-names: Serra-Peralta
     email: M.SerraPeralta@student.tudelft.nl
     affiliation: 'QuTech, Delft University of Technology'
+    orcid: 'https://orcid.org/0000-0002-8000-8701'
 repository-code: 'https://github.com/BorisVarbanov/qrennd'
 abstract: >-
   Neural-network decoders can achieve a lower logical error
