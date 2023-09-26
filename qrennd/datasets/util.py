@@ -7,6 +7,7 @@ from .preprocessing import (
     to_measurements,
     to_model_input,
     to_syndromes,
+    to_defect_probs_experimental,
 )
 from .sequences import RaggedSequence, Sequence
 
@@ -47,6 +48,12 @@ def load_datasets(
         digitization = config.dataset.get("digitization")
         processed_gen = (
             to_defect_probs(dataset, proj_matrix, assign_errors, digitization)
+            for dataset in dataset_gen
+        )
+    elif input_type == "prob_defects_exp":
+        digitization = config.dataset.get("digitization")
+        processed_gen = (
+            to_defect_probs_experimental(dataset, proj_matrix, digitization)
             for dataset in dataset_gen
         )
     else:
