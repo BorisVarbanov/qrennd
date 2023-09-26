@@ -21,9 +21,11 @@ class RaggedSequence(BaseSequence):
         self.log_errors = log_errors
 
         self.num_groups = len(rec_inputs)
-        self.group_size = rec_inputs[0].shape[0]
+        self.group_sizes = [rec_input.shape[0] for rec_input in rec_inputs]
 
-        self.num_batches = ceil(self.group_size / batch_size)
+        self.num_batches = [
+            ceil(group_size / batch_size) for group_size in self.group_sizes
+        ]
 
         self.batch_size = batch_size
         self.predict = predict_defects
@@ -61,7 +63,7 @@ class RaggedSequence(BaseSequence):
         int
             Number of batches per epoch
         """
-        return self.num_groups * self.num_batches
+        return sum(self.num_batches)
 
     def __getitem__(
         self, index: int
@@ -75,13 +77,13 @@ class RaggedSequence(BaseSequence):
             A tuple of a dictionary with the input data, consisting of the defects and
             final defects, together with the output label.
         """
-        group = index % self.num_groups
+        group = np.where(np.cumsum(self.num_batches) > index)[0][0]
 
-        batch_ind = index // self.num_groups
+        batch_ind = index - np.sum(self.num_batches[:group]).astype(int)
 
         start_shot = batch_ind * self.batch_size
-        if batch_ind == (self.num_batches - 1):
-            end_shot = self.group_size
+        if batch_ind == (self.num_batches[group] - 1):
+            end_shot = self.group_sizes[group]
         else:
             end_shot = start_shot + self.batch_size
 
@@ -174,3 +176,4 @@ class Sequence(BaseSequence):
         inputs = dict(rec_input=self.rec_input, eval_input=self.eval_input)
         outputs = self.log_errors
         return inputs, outputs
+

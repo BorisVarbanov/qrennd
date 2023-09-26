@@ -273,11 +273,15 @@ def to_defects(
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     """
-    anc_flips = dataset.anc_meas ^ dataset.ideal_anc_meas
+    # set leakage shots to |1>
+    anc_meas = xr.where(dataset.anc_meas == 2, 1, dataset.anc_meas).astype(bool)
+    data_meas = xr.where(dataset.data_meas == 2, 1, dataset.data_meas).astype(bool)
+
+    anc_flips = anc_meas ^ dataset.ideal_anc_meas
     syndromes = get_syndromes(anc_flips)
     defects = get_defects(syndromes)
 
-    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
+    data_flips = data_meas ^ dataset.ideal_data_meas
     proj_syndrome = (data_flips @ proj_mat) % 2
     final_defects = get_final_defects(syndromes, proj_syndrome)
 
