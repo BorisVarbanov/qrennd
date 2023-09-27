@@ -162,6 +162,12 @@ def get_state_probs_experimental(
     probs_1_list = xr.concat(probs_1_list, dim="anc_qubit")
     anc_probs = xr.concat([probs_0_list, probs_1_list], dim="state")
 
+    anc_probs = anc_probs / anc_probs.sum(dim="state")
+    data_probs = data_probs / data_probs.sum(dim="state")
+
+    anc_probs = anc_probs.transpose("state", "shot", "qec_round", "anc_qubit")
+    data_probs = data_probs.transpose("state", "shot", "data_qubit")
+
     return anc_probs, data_probs
 
 
