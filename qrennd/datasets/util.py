@@ -8,6 +8,7 @@ from .preprocessing import (
     to_model_input,
     to_syndromes,
     to_defect_probs_experimental,
+    to_defect_probs_experimental_2,
 )
 from .sequences import RaggedSequence, Sequence
 
@@ -56,6 +57,12 @@ def load_datasets(
             to_defect_probs_experimental(dataset, proj_matrix, digitization)
             for dataset in dataset_gen
         )
+    elif input_type == "prob_defects_exp_2":
+        digitization = config.dataset.get("digitization")
+        processed_gen = (
+            to_defect_probs_experimental_2(dataset, proj_matrix, digitization)
+            for dataset in dataset_gen
+        )
     else:
         raise ValueError(
             f"Unknown input data type {input_type}, the possible "
@@ -64,8 +71,9 @@ def load_datasets(
 
     # Process for keras.model input
     conv_models = ("ConvLSTM", "Conv_LSTM")
+    float_inputs = ("prob_defects", "prob_defects_exp", "prob_defects_exp_2")
     exp_matrix = layout.expansion_matrix() if (model_type in conv_models) else None
-    data_type = float if input_type in ["prob_defects", "prob_defects_exp"] else bool
+    data_type = float if input_type in float_inputs else bool
     input_gen = (to_model_input(*arrs, exp_matrix, data_type) for arrs in processed_gen)
 
     if concat:

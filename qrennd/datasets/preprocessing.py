@@ -528,3 +528,53 @@ def digitize_final_measurements(dataset: xr.Dataset) -> xr.Dataset:
         digitized_list.append(digitized)
     digitized_list = xr.concat(digitized_list, dim="data_qubit")
     return digitized_list
+
+
+def to_defect_probs_experimental_2(
+    dataset: xr.Dataset,
+    proj_mat: xr.DataArray,
+    digitization: Optional[bool] = False,
+):
+    """
+    Preprocess dataset to generate the probability of defect
+    based on the soft outcomes and the logical errors.
+
+    Parameters
+    ----------
+    dataset
+        Assumes to have the following variables and dimensions:
+        - anc_meas: [shots, qec_cycle, anc_qubit]
+        - ideal_anc_meas: [qec_cycle, anc_qubit]
+        - data_meas: [shot, data_qubit]
+        - idea_data_meas: [data_qubit]
+        - prob_error: float
+    proj_mat
+        Assumes to have dimensions [data_qubits, stab],
+        where stab correspond to the final stabilizers.
+    digitization
+        Flag for digitizing the defect probability
+    """
+    anc_probs, data_probs = get_state_probs_experimental(dataset)
+
+    ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
+    ideal_defects = get_defects(ideal_syndromes)
+    defect_probs = get_defect_probs(anc_probs, ideal_defects)
+
+    ideal_proj_syndrome = (dataset.ideal_data_meas @ proj_mat) % 2
+    ideal_final_defects = get_final_defects(ideal_syndromes, ideal_proj_syndrome)
+    final_defect_probs = get_final_defect_probs(
+        anc_probs,
+        data_probs,
+        ideal_final_defects=ideal_final_defects,
+        proj_mat=proj_mat,
+    )
+    final_defect_probs = final_defect_probs > 0.5
+
+    data_meas = digitize_final_measurements(dataset)
+    data_flips = data_meas ^ dataset.ideal_data_meas
+    log_errors = data_flips.sum(dim="data_qubit") % 2
+
+    if digitization:
+        defect_probs = defect_probs > 0.5
+
+    return defect_probs, final_defect_probs, log_errors
