@@ -524,7 +524,12 @@ def digitize_final_measurements(dataset: xr.Dataset) -> xr.Dataset:
     for qubit in dataset.data_qubit:
         outcomes = dataset.data_meas.sel(data_qubit=qubit)
         threshold = dataset.thresholds.sel(qubit=qubit)
-        digitized = outcomes > threshold
+        params = dataset.pdf_0_params.sel(qubit=qubit).values
+        mu0, mu1 = params[:2]
+        if mu0 > mu1:
+            digitized = outcomes < threshold
+        else:
+            digitized = outcomes > threshold
         digitized_list.append(digitized)
     digitized_list = xr.concat(digitized_list, dim="data_qubit")
     return digitized_list
