@@ -77,7 +77,13 @@ def get_state_probs(
     xr.DataArray
         The probabilities of the qubit being in each state given the outcomes.
     """
-    probs_gen = (norm_pdf(outcomes, mean, dev) for mean in means)
+    if dev == 0:
+        # state 0 probability = 0 if hard outcome is in 1
+        # state 1 probability = 0 if hard outcome is in 0
+        # Note: probabilities are normalized later
+        probs_gen = [abs(outcomes - means[1]), abs(outcomes - means[0])]
+    else:
+        probs_gen = (norm_pdf(outcomes, mean, dev) for mean in means)
     outcome_probs = xr.concat(probs_gen, dim="state")
     state_probs = outcome_probs / outcome_probs.sum(dim="state")
     return state_probs
