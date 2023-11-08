@@ -389,9 +389,17 @@ def to_model_input(
         expanded_inputs = rec_inputs @ expansion_matrix
         rec_tensor = expanded_inputs.values.astype(data_type)
     else:
-        rec_tensor = rec_inputs.values.astype(data_type)
+        if isinstance(rec_inputs, list):
+            rec_tensor = [r.values.astype(data_type) for r in rec_inputs]
+            rec_tensor = np.concatenate(rec_tensor, axis=2)
+        else:
+            rec_tensor = rec_inputs.values.astype(data_type)
 
-    eval_tensor = eval_inputs.values.astype(data_type)
+    if isinstance(eval_inputs, list):
+        eval_tensor = [r.values.astype(data_type) for r in eval_inputs]
+        eval_tensor = np.concatenate(eval_tensor, axis=1)
+    else:
+        eval_tensor = eval_inputs.values.astype(data_type)
 
     error_tensor = log_errors.values.astype(data_type)
 
@@ -469,7 +477,7 @@ def to_defect_probs(
 def to_defect_probs_experimental(
     dataset: xr.Dataset,
     proj_mat: xr.DataArray,
-    digitization: Optional[bool] = False,
+    digitization: Optional[Tuple[bool, dict]] = False,
 ):
     """
     Preprocess dataset to generate the probability of defect
@@ -490,6 +498,9 @@ def to_defect_probs_experimental(
     digitization
         Flag for digitizing the defect probability
     """
+    if isinstance(digitization, bool):
+        digitization = {"anc": digitization, "data": digitization}
+
     anc_probs, data_probs = get_state_probs_experimental(dataset)
 
     ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
@@ -509,8 +520,9 @@ def to_defect_probs_experimental(
     data_flips = data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
-    if digitization:
+    if digitization["anc"]:
         defect_probs = defect_probs > 0.5
+    if digitization["data"]:
         final_defect_probs = final_defect_probs > 0.5
 
     return defect_probs, final_defect_probs, log_errors
@@ -535,10 +547,10 @@ def digitize_final_measurements(dataset: xr.Dataset) -> xr.Dataset:
     return digitized_list
 
 
-def to_defect_probs_experimental_2(
+def to_defect_probs_leakage_experimental(
     dataset: xr.Dataset,
     proj_mat: xr.DataArray,
-    digitization: Optional[bool] = False,
+    digitization: Optional[Tuple[bool, dict]] = False,
 ):
     """
     Preprocess dataset to generate the probability of defect
@@ -551,6 +563,8 @@ def to_defect_probs_experimental_2(
         - anc_meas: [shots, qec_cycle, anc_qubit]
         - ideal_anc_meas: [qec_cycle, anc_qubit]
         - data_meas: [shot, data_qubit]
+        - anc_leakage_flag: [shots, qec_cycle, anc_qubit]
+        - data_leakage_flag: [shot, data_qubit]
         - idea_data_meas: [data_qubit]
         - prob_error: float
     proj_mat
@@ -559,6 +573,9 @@ def to_defect_probs_experimental_2(
     digitization
         Flag for digitizing the defect probability
     """
+    if isinstance(digitization, bool):
+        digitization = {"anc": digitization, "data": digitization}
+
     anc_probs, data_probs = get_state_probs_experimental(dataset)
 
     ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
@@ -573,13 +590,22 @@ def to_defect_probs_experimental_2(
         ideal_final_defects=ideal_final_defects,
         proj_mat=proj_mat,
     )
-    final_defect_probs = final_defect_probs > 0.5
 
     data_meas = digitize_final_measurements(dataset)
     data_flips = data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
-    if digitization:
+    if digitization["anc"]:
         defect_probs = defect_probs > 0.5
+    if digitization["data"]:
+        final_defect_probs = final_defect_probs > 0.5
 
-    return defect_probs, final_defect_probs, log_errors
+    # add leakage outcomes
+    anc_leakage_flag = dataset.anc_leakage_flag
+    data_leakage_flag = dataset.data_leakage_flag
+
+    return (
+        [defect_probs, anc_leakage_flag],
+        [final_defect_probs, data_leakage_flag],
+        log_errors,
+    )
