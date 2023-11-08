@@ -135,8 +135,8 @@ def eval_network(
 
     if len(dropout_rates) != num_layers:
         raise ValueError(
-            f"Mismatch between the number of ConvLSTM layers ({num_layers})"
-            "and the number of ConvLSTM dropout rate after each layer."
+            f"Mismatch between the number of eval layers ({num_layers})"
+            "and the number of eval dropout rate after each layer."
         )
 
     regularizer = keras.regularizers.L2(l2_factor) if l2_factor else None

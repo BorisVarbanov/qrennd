@@ -342,6 +342,96 @@ def lstm_decoder_model(
     return model
 
 
+def encoder_lstm_model(
+    rec_features: int, eval_features: int, config: Config
+) -> keras.Model:
+    rec_input = keras.layers.Input(
+        shape=(None, rec_features),
+        dtype="float32",
+        name="rec_input",
+    )
+    eval_input = keras.layers.Input(
+        shape=(eval_features,),
+        dtype="float32",
+        name="eval_input",
+    )
+
+    if enc_params := config.model.get("encoder_rec"):
+        network = eval_network(
+            name="encoder_rec",
+            output_activation="relu",
+            **enc_params,
+        )
+        output = next(network)(rec_input)
+        for layer in network:
+            output = layer(output)
+    else:
+        output = rec_input
+
+    lstm_params = config.model["LSTM"]
+    network = lstm_network(name="LSTM", **lstm_params)
+    for layer in network:
+        output = layer(output)
+
+    activation_layer = keras.layers.Activation(
+        activation="relu",
+        name="relu_LSTM",
+    )
+    output = activation_layer(output)
+
+    if enc_params := config.model.get("encoder_eval"):
+        network = eval_network(
+            name="encoder_eval",
+            output_activation="relu",
+            **enc_params,
+        )
+        eval_input_enc = next(network)(eval_input)
+        for layer in network:
+            eval_input_enc = layer(eval_input_enc)
+    else:
+        eval_input_enc = eval_input
+
+    concat_layer = keras.layers.Concatenate(axis=1, name="eval_concat")
+    main_eval_input = concat_layer((output, eval_input_enc))
+
+    main_eval_params = config.model["main_eval"]
+    network = eval_network(name="main", **main_eval_params)
+    main_output = next(network)(main_eval_input)
+    for layer in network:
+        main_output = layer(main_output)
+
+    aux_eval_params = config.model["aux_eval"]
+    network = eval_network(name="aux", **aux_eval_params)
+    aux_output = next(network)(output)
+    for layer in network:
+        aux_output = layer(aux_output)
+
+    inputs = [rec_input, eval_input]
+    outputs = [main_output, aux_output]
+
+    model = keras.Model(inputs=inputs, outputs=outputs, name="encoding_lstm_model")
+
+    opt_params = config.train.get("optimizer", DEFAULT_OPT_PARAMS)
+    optimizer = keras.optimizers.Adam(**opt_params)
+
+    loss = config.train.get("loss")
+    loss_weights = config.train.get("loss_weights")
+    metrics = config.train.get("metrics")
+
+    model.compile(optimizer, loss, metrics, loss_weights)
+
+    if config.init_weights:
+        try:
+            experiment_dir = config.output_dir / config.experiment
+            model.load_weights(experiment_dir / config.init_weights)
+        except FileNotFoundError as error:
+            raise ValueError(
+                "Invalid initial weights in configuration file."
+            ) from error
+
+    return model
+
+
 def get_model(
     rec_features: Union[int, List[int]],
     eval_features: int,
@@ -356,5 +446,7 @@ def get_model(
         return conv_lstm_model(rec_features, eval_features, config)
     elif model_type == "LSTM_decoder":
         return lstm_decoder_model(rec_features, eval_features, config)
+    elif model_type == "Encoder_LSTM":
+        return encoder_lstm_model(rec_features, eval_features, config)
     else:
         raise ValueError(f"Unrecognize config.model.type {model_type}")
