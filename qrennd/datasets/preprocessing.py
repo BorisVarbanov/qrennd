@@ -436,6 +436,9 @@ def to_defect_probs(
     digitization
         Flag for digitizing the defect probability
     """
+    if isinstance(digitization, bool):
+        digitization = {"anc": digitization, "data": digitization}
+
     # Get Gaussian params
     means = np.array([-1, 1])
     dev_anc = dev_from_error(means, assign_errors["anc"])
@@ -467,8 +470,9 @@ def to_defect_probs(
     data_flips = dataset.data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
-    if digitization:
+    if digitization["anc"]:
         defect_probs = defect_probs > 0.5
+    if digitization["data"]:
         final_defect_probs = final_defect_probs > 0.5
 
     return defect_probs, final_defect_probs, log_errors
