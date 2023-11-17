@@ -9,6 +9,7 @@ from .preprocessing import (
     to_syndromes,
     to_defect_probs_experimental,
     to_defect_probs_leakage_experimental,
+    to_custom,
 )
 from .sequences import RaggedSequence, Sequence
 
@@ -63,6 +64,13 @@ def load_datasets(
             to_defect_probs_leakage_experimental(dataset, proj_matrix, digitization)
             for dataset in dataset_gen
         )
+    elif input_type == "custom":
+        assign_errors = config.dataset.get("assign_errors")
+        setup = config.dataset.get("setup")
+        processed_gen = (
+            to_custom(dataset, proj_matrix, assign_errors, setup)
+            for dataset in dataset_gen
+        )
     else:
         raise ValueError(
             f"Unknown input data type {input_type}, the possible "
@@ -75,6 +83,7 @@ def load_datasets(
         "prob_defects",
         "prob_defects_exp",
         "prob_defects_leakage_exp",
+        "custom",
     )
     exp_matrix = layout.expansion_matrix() if (model_type in conv_models) else None
     data_type = float if input_type in float_inputs else bool

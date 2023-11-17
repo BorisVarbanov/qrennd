@@ -613,3 +613,86 @@ def to_defect_probs_leakage_experimental(
         [final_defect_probs, data_leakage_flag],
         log_errors,
     )
+
+
+def to_custom(
+    dataset: xr.Dataset,
+    proj_mat: xr.DataArray,
+    assign_errors: dict,
+    setup: dict,
+):
+    """
+    Preprocess dataset to generate the probability of defect
+    based on the soft outcomes and the logical errors.
+
+    Parameters
+    ----------
+    dataset
+        Assumes to have the following variables and dimensions:
+        - anc_meas: [shots, qec_cycle, anc_qubit]
+        - ideal_anc_meas: [qec_cycle, anc_qubit]
+        - data_meas: [shot, data_qubit]
+        - idea_data_meas: [data_qubit]
+        - prob_error: float
+    proj_mat
+        Assumes to have dimensions [data_qubits, stab],
+        where stab correspond to the final stabilizers.
+    assign_errors
+        Assignment error probability for the soft measurements.
+        Should be of the form:
+        {"anc": assign_error_ancilla,
+         "data": assign_error_data}
+    digitization
+        Flag for digitizing the defect probability
+    """
+    digitization = setup["digitization"]
+    to_predict = setup["to_predict"]
+    if isinstance(digitization, bool):
+        digitization = {"anc": digitization, "data": digitization}
+
+    # Get Gaussian params
+    means = np.array([-1, 1])
+    dev_anc = dev_from_error(means, assign_errors["anc"])
+    dev_data = dev_from_error(means, assign_errors["data"])
+
+    rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
+
+    samples = rng.normal(means, dev_anc, size=(*dataset.anc_meas.shape, 2))
+    anc_outcomes = xr.where(dataset.anc_meas, samples[..., 1], samples[..., 0])
+
+    anc_probs = get_state_probs(anc_outcomes, means, dev_anc)
+    ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
+    ideal_defects = get_defects(ideal_syndromes)
+    defect_probs = get_defect_probs(anc_probs, ideal_defects)
+
+    samples = rng.normal(means, dev_data, size=(*dataset.data_meas.shape, 2))
+    data_outcomes = xr.where(dataset.data_meas, samples[..., 1], samples[..., 0])
+
+    data_probs = get_state_probs(data_outcomes, means, dev_data)
+    ideal_proj_syndrome = (dataset.ideal_data_meas @ proj_mat) % 2
+    ideal_final_defects = get_final_defects(ideal_syndromes, ideal_proj_syndrome)
+    final_defect_probs = get_final_defect_probs(
+        anc_probs,
+        data_probs,
+        ideal_final_defects=ideal_final_defects,
+        proj_mat=proj_mat,
+    )
+
+    if to_predict == "log_errors":
+        data_flips = dataset.data_meas ^ dataset.ideal_data_meas
+        output = data_flips.sum(dim="data_qubit") % 2
+    elif to_predict == "log_outcomes":
+        data = dataset.data_meas
+        output = data.sum(dim="data_qubit") % 2
+    elif to_predict == "initial_states":
+        data = dataset.ideal_data_meas
+        output = data.sum(dim="data_qubit") % 2
+    else:
+        raise ValueError()
+
+    if digitization["anc"]:
+        defect_probs = defect_probs > 0.5
+    if digitization["data"]:
+        final_defect_probs = final_defect_probs > 0.5
+
+    return defect_probs, final_defect_probs, output
