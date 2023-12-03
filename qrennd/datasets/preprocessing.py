@@ -684,8 +684,11 @@ def to_custom(
     elif to_predict == "log_outcomes":
         data = dataset.data_meas
         output = data.sum(dim="data_qubit") % 2
+    elif to_predict == "log_outcomes_corrected":
+        data = dataset.data_meas ^ dataset.ideal_data_meas ^ dataset.data_init
+        output = data.sum(dim="data_qubit") % 2
     elif to_predict == "initial_states":
-        data = dataset.ideal_data_meas
+        data = dataset.data_init
         output = data.sum(dim="data_qubit") % 2
     else:
         raise ValueError()
