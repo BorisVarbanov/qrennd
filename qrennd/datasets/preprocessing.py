@@ -467,7 +467,8 @@ def to_defect_probs(
         proj_mat=proj_mat,
     )
 
-    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
+    data_meas = data_outcomes > 0
+    data_flips = data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
     if digitization["anc"]:
@@ -678,14 +679,17 @@ def to_custom(
         proj_mat=proj_mat,
     )
 
+    data_meas = data_outcomes > 0
+    data_flips = data_meas ^ dataset.ideal_data_meas
+    log_errors = data_flips.sum(dim="data_qubit") % 2
+
     if to_predict == "log_errors":
-        data_flips = dataset.data_meas ^ dataset.ideal_data_meas
+        data_flips = data_meas ^ dataset.ideal_data_meas
         output = data_flips.sum(dim="data_qubit") % 2
     elif to_predict == "log_outcomes":
-        data = dataset.data_meas
-        output = data.sum(dim="data_qubit") % 2
+        output = data_meas.sum(dim="data_qubit") % 2
     elif to_predict == "log_outcomes_corrected":
-        data = dataset.data_meas ^ dataset.ideal_data_meas ^ dataset.data_init
+        data = data_meas ^ dataset.ideal_data_meas ^ dataset.data_init
         output = data.sum(dim="data_qubit") % 2
     elif to_predict == "initial_states":
         data = dataset.data_init
