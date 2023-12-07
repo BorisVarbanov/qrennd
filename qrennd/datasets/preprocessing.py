@@ -370,7 +370,8 @@ def to_defect_probs(
         proj_mat=proj_mat,
     )
 
-    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
+    data_meas = data_outcomes > 0
+    data_flips = data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
     if digitization:
