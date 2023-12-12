@@ -556,6 +556,7 @@ def to_defect_probs_leakage_experimental(
     dataset: xr.Dataset,
     proj_mat: xr.DataArray,
     digitization: Optional[Tuple[bool, dict]] = False,
+    leakage_final: bool = True,  # for backwards compatibility
 ):
     """
     Preprocess dataset to generate the probability of defect
@@ -609,9 +610,15 @@ def to_defect_probs_leakage_experimental(
     anc_leakage_flag = dataset.anc_leakage_flag
     data_leakage_flag = dataset.data_leakage_flag
 
+    rec_inputs = [defect_probs, anc_leakage_flag]
+    if leakage_final:
+        eval_inputs = [final_defect_probs, data_leakage_flag]
+    else:
+        eval_inputs = final_defect_probs
+
     return (
-        [defect_probs, anc_leakage_flag],
-        [final_defect_probs, data_leakage_flag],
+        rec_inputs,
+        eval_inputs,
         log_errors,
     )
 

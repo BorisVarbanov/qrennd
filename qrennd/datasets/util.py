@@ -60,8 +60,11 @@ def load_datasets(
         )
     elif input_type == "prob_defects_leakage_exp":
         digitization = config.dataset.get("digitization")
+        leakage_final = config.dataset.get("leakage_final")
         processed_gen = (
-            to_defect_probs_leakage_experimental(dataset, proj_matrix, digitization)
+            to_defect_probs_leakage_experimental(
+                dataset, proj_matrix, digitization, leakage_final
+            )
             for dataset in dataset_gen
         )
     elif input_type == "custom":
