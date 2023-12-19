@@ -285,99 +285,6 @@ def get_final_defect_probs(
     return final_defect_probs
 
 
-def to_measurements(
-    dataset: xr.Dataset,
-):
-    """
-    Preprocess dataset to generate measurement inputs
-    and the logical errors.
-
-    Parameters
-    ----------
-    dataset
-        Assumes to have the following variables and dimensions:
-        - anc_meas: [shots, qec_cycle, anc_qubit]
-        - ideal_anc_meas: [qec_cycle, anc_qubit]
-        - data_meas: [shot, data_qubit]
-        - idea_data_meas: [data_qubit]
-    """
-    anc_meas = dataset.anc_meas
-    data_meas = dataset.data_meas
-
-    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
-    log_errors = data_flips.sum(dim="data_qubit") % 2
-
-    return anc_meas, data_meas, log_errors
-
-
-def to_syndromes(
-    dataset: xr.Dataset,
-    proj_mat: xr.DataArray,
-):
-    """
-    Preprocess dataset to generate syndrome inputs
-    and the logical errors.
-
-    Parameters
-    ----------
-    dataset
-        Assumes to have the following variables and dimensions:
-        - anc_meas: [shots, qec_cycle, anc_qubit]
-        - ideal_anc_meas: [qec_cycle, anc_qubit]
-        - data_meas: [shot, data_qubit]
-        - idea_data_meas: [data_qubit]
-    proj_mat
-        Assumes to have dimensions [data_qubits, stab],
-        where stab correspond to the final stabilizers.
-    """
-    anc_flips = dataset.anc_meas ^ dataset.ideal_anc_meas
-    syndromes = get_syndromes(anc_flips)
-
-    data_flips = dataset.data_meas ^ dataset.ideal_data_meas
-    final_syndromes = (data_flips @ proj_mat) % 2
-
-    log_errors = data_flips.sum(dim="data_qubit") % 2
-
-    return syndromes, final_syndromes, log_errors
-
-
-def to_defects(
-    dataset: xr.Dataset,
-    proj_mat: xr.DataArray,
-):
-    """
-    Preprocess dataset to generate defect inputs
-    and the logical errors.
-
-    Parameters
-    ----------
-    dataset
-        Assumes to have the following variables and dimensions:
-        - anc_meas: [shots, qec_cycle, anc_qubit]
-        - ideal_anc_meas: [qec_cycle, anc_qubit]
-        - data_meas: [shot, data_qubit]
-        - idea_data_meas: [data_qubit]
-    proj_mat
-        Assumes to have dimensions [data_qubits, stab],
-        where stab correspond to the final stabilizers.
-    """
-    # set leakage shots to |1>
-    anc_meas = xr.where(dataset.anc_meas == 2, 1, dataset.anc_meas).astype(bool)
-    data_meas = xr.where(dataset.data_meas == 2, 1, dataset.data_meas).astype(bool)
-
-    anc_flips = anc_meas ^ dataset.ideal_anc_meas
-    syndromes = get_syndromes(anc_flips)
-    defects = get_defects(syndromes)
-
-    data_flips = data_meas ^ dataset.ideal_data_meas
-    proj_syndrome = (data_flips @ proj_mat) % 2
-    final_defects = get_final_defects(syndromes, proj_syndrome)
-
-    log_errors = data_flips.sum(dim="data_qubit") % 2
-
-    return defects, final_defects, log_errors
-
-
 def to_model_input(
     rec_inputs: xr.DataArray,
     eval_inputs: xr.DataArray,
@@ -404,79 +311,6 @@ def to_model_input(
     error_tensor = log_errors.values.astype(data_type)
 
     return rec_tensor, eval_tensor, error_tensor
-
-
-def to_defect_probs(
-    dataset: xr.Dataset,
-    proj_mat: xr.DataArray,
-    assign_errors: dict,
-    digitization: Optional[bool] = False,
-):
-    """
-    Preprocess dataset to generate the probability of defect
-    based on the soft outcomes and the logical errors.
-
-    Parameters
-    ----------
-    dataset
-        Assumes to have the following variables and dimensions:
-        - anc_meas: [shots, qec_cycle, anc_qubit]
-        - ideal_anc_meas: [qec_cycle, anc_qubit]
-        - data_meas: [shot, data_qubit]
-        - idea_data_meas: [data_qubit]
-        - prob_error: float
-    proj_mat
-        Assumes to have dimensions [data_qubits, stab],
-        where stab correspond to the final stabilizers.
-    assign_errors
-        Assignment error probability for the soft measurements.
-        Should be of the form:
-        {"anc": assign_error_ancilla,
-         "data": assign_error_data}
-    digitization
-        Flag for digitizing the defect probability
-    """
-    if isinstance(digitization, bool):
-        digitization = {"anc": digitization, "data": digitization}
-
-    # Get Gaussian params
-    means = np.array([-1, 1])
-    dev_anc = dev_from_error(means, assign_errors["anc"])
-    dev_data = dev_from_error(means, assign_errors["data"])
-
-    rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
-
-    samples = rng.normal(means, dev_anc, size=(*dataset.anc_meas.shape, 2))
-    anc_outcomes = xr.where(dataset.anc_meas, samples[..., 1], samples[..., 0])
-
-    anc_probs = get_state_probs(anc_outcomes, means, dev_anc)
-    ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
-    ideal_defects = get_defects(ideal_syndromes)
-    defect_probs = get_defect_probs(anc_probs, ideal_defects)
-
-    samples = rng.normal(means, dev_data, size=(*dataset.data_meas.shape, 2))
-    data_outcomes = xr.where(dataset.data_meas, samples[..., 1], samples[..., 0])
-
-    data_probs = get_state_probs(data_outcomes, means, dev_data)
-    ideal_proj_syndrome = (dataset.ideal_data_meas @ proj_mat) % 2
-    ideal_final_defects = get_final_defects(ideal_syndromes, ideal_proj_syndrome)
-    final_defect_probs = get_final_defect_probs(
-        anc_probs,
-        data_probs,
-        ideal_final_defects=ideal_final_defects,
-        proj_mat=proj_mat,
-    )
-
-    data_meas = data_outcomes > 0
-    data_flips = data_meas ^ dataset.ideal_data_meas
-    log_errors = data_flips.sum(dim="data_qubit") % 2
-
-    if digitization["anc"]:
-        defect_probs = defect_probs > 0.5
-    if digitization["data"]:
-        final_defect_probs = final_defect_probs > 0.5
-
-    return defect_probs, final_defect_probs, log_errors
 
 
 def to_defect_probs_experimental(
@@ -552,11 +386,11 @@ def digitize_final_measurements(dataset: xr.Dataset) -> xr.Dataset:
     return digitized_list
 
 
-def to_defect_probs_leakage_experimental(
+def to_defect_probs_leakage_IQ(
     dataset: xr.Dataset,
     proj_mat: xr.DataArray,
-    digitization: Optional[Tuple[bool, dict]] = False,
-    leakage_final: bool = True,  # for backwards compatibility
+    digitization: Optional[dict] = {"data": False, "anc": False},
+    leakage: Optional[dict] = {"data": False, "anc": False},
 ):
     """
     Preprocess dataset to generate the probability of defect
@@ -572,17 +406,13 @@ def to_defect_probs_leakage_experimental(
         - anc_leakage_flag: [shots, qec_cycle, anc_qubit]
         - data_leakage_flag: [shot, data_qubit]
         - idea_data_meas: [data_qubit]
-        - prob_error: float
     proj_mat
         Assumes to have dimensions [data_qubits, stab],
         where stab correspond to the final stabilizers.
     digitization
         Flag for digitizing the defect probability
     """
-    if isinstance(digitization, bool):
-        digitization = {"anc": digitization, "data": digitization}
-
-    anc_probs, data_probs = get_state_probs_experimental(dataset)
+    anc_probs, data_probs = get_state_probs_IQ(dataset)
 
     ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
     ideal_defects = get_defects(ideal_syndromes)
@@ -597,7 +427,8 @@ def to_defect_probs_leakage_experimental(
         proj_mat=proj_mat,
     )
 
-    data_meas = digitize_final_measurements(dataset)
+    data_meas = data_probs.sel(state=1) > data_probs.sel(state=0)
+    data_meas = data_meas.transpose("shot", "data_qubit")
     data_flips = data_meas ^ dataset.ideal_data_meas
     log_errors = data_flips.sum(dim="data_qubit") % 2
 
@@ -607,14 +438,13 @@ def to_defect_probs_leakage_experimental(
         final_defect_probs = final_defect_probs > 0.5
 
     # add leakage outcomes
-    anc_leakage_flag = dataset.anc_leakage_flag
-    data_leakage_flag = dataset.data_leakage_flag
-
-    rec_inputs = [defect_probs, anc_leakage_flag]
-    if leakage_final:
+    rec_inputs, eval_inputs = defect_probs, final_defect_probs
+    if leakage["anc"]:
+        anc_leakage_flag = dataset.anc_leakage_flag
+        rec_inputs = [defect_probs, anc_leakage_flag]
+    if leakage["data"]:
+        data_leakage_flag = dataset.data_leakage_flag
         eval_inputs = [final_defect_probs, data_leakage_flag]
-    else:
-        eval_inputs = final_defect_probs
 
     return (
         rec_inputs,
@@ -623,90 +453,112 @@ def to_defect_probs_leakage_experimental(
     )
 
 
-def to_custom(
+def get_state_probs_IQ(
     dataset: xr.Dataset,
-    proj_mat: xr.DataArray,
-    assign_errors: dict,
-    setup: dict,
-):
+) -> xr.Dataset:
     """
-    Preprocess dataset to generate the probability of defect
-    based on the soft outcomes and the logical errors.
+    Calculates the probabilities of the qubit
+    being in a given state (0 or 1) given the soft measurement
+    outcomes for the ancilla and the data qubits.
 
     Parameters
     ----------
-    dataset
-        Assumes to have the following variables and dimensions:
-        - anc_meas: [shots, qec_cycle, anc_qubit]
-        - ideal_anc_meas: [qec_cycle, anc_qubit]
-        - data_meas: [shot, data_qubit]
-        - idea_data_meas: [data_qubit]
-        - prob_error: float
-    proj_mat
-        Assumes to have dimensions [data_qubits, stab],
-        where stab correspond to the final stabilizers.
-    assign_errors
-        Assignment error probability for the soft measurements.
-        Should be of the form:
-        {"anc": assign_error_ancilla,
-         "data": assign_error_data}
-    digitization
-        Flag for digitizing the defect probability
+    outcomes : xr.Dataset
+        The soft measurement outcomes.
+
+    Returns
+    -------
+    anc_probs: xr.Dataset
+        The probabilities of the ancilla qubits being in each state given the outcomes.
+    data_probs: xr.Dataset
+        The probabilities of the data qubits being in each state given the outcomes.
     """
-    digitization = setup["digitization"]
-    to_predict = setup["to_predict"]
-    if isinstance(digitization, bool):
-        digitization = {"anc": digitization, "data": digitization}
 
-    # Get Gaussian params
-    means = np.array([-1, 1])
-    dev_anc = dev_from_error(means, assign_errors["anc"])
-    dev_data = dev_from_error(means, assign_errors["data"])
+    # projection to 1d
+    def project(x, theta):
+        # the projection need to be done clockwise
+        rot_mat = xr.DataArray(
+            [np.cos(theta), np.sin(theta)], coords=dict(iq=["I", "Q"])
+        )
+        z = x @ rot_mat
+        return z
 
-    rng = np.random.default_rng(seed=int(dataset.seed))  # avoids TypeError
+    # pdf that 'iq_readout' repository uses for fitting
+    def simple_1d_gaussian(x: np.ndarray, mu: float, sigma: float) -> np.ndarray:
+        z = (
+            1
+            / np.sqrt(2 * np.pi * sigma**2)
+            * np.exp(-0.5 * (x - mu) ** 2 / sigma**2)
+        )
+        return z
 
-    samples = rng.normal(means, dev_anc, size=(*dataset.anc_meas.shape, 2))
-    anc_outcomes = xr.where(dataset.anc_meas, samples[..., 1], samples[..., 0])
+    def simple_1d_gaussian_double_mixture(
+        x: np.ndarray, mu_0: float, mu_1: float, sigma: float, angle: float
+    ) -> np.ndarray:
+        a1, a2 = np.sin(angle) ** 2, np.cos(angle) ** 2
+        z = a1 * simple_1d_gaussian(x, mu=mu_0, sigma=sigma) + a2 * simple_1d_gaussian(
+            x, mu=mu_1, sigma=sigma
+        )
+        return z
 
-    anc_probs = get_state_probs(anc_outcomes, means, dev_anc)
-    ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
-    ideal_defects = get_defects(ideal_syndromes)
-    defect_probs = get_defect_probs(anc_probs, ideal_defects)
+    param_names = ["mu_0", "mu_1", "sigma", "angle"]
 
-    samples = rng.normal(means, dev_data, size=(*dataset.data_meas.shape, 2))
-    data_outcomes = xr.where(dataset.data_meas, samples[..., 1], samples[..., 0])
+    # data qubits
+    probs_0_list = []
+    for qubit in dataset.data_qubit:
+        outcomes = dataset.data_meas.sel(data_qubit=qubit)
+        outcomes = project(outcomes, dataset.rot_angles.sel(qubit=qubit))
+        params = {
+            param: dataset.pdf_0_params.sel(qubit=qubit, param=param)
+            for param in param_names
+        }
+        probs = simple_1d_gaussian_double_mixture(outcomes, **params)
+        probs_0_list.append(probs)
+    probs_0_list = xr.concat(probs_0_list, dim="data_qubit")
 
-    data_probs = get_state_probs(data_outcomes, means, dev_data)
-    ideal_proj_syndrome = (dataset.ideal_data_meas @ proj_mat) % 2
-    ideal_final_defects = get_final_defects(ideal_syndromes, ideal_proj_syndrome)
-    final_defect_probs = get_final_defect_probs(
-        anc_probs,
-        data_probs,
-        ideal_final_defects=ideal_final_defects,
-        proj_mat=proj_mat,
-    )
+    probs_1_list = []
+    for qubit in dataset.data_qubit:
+        outcomes = dataset.data_meas.sel(data_qubit=qubit)
+        outcomes = project(outcomes, dataset.rot_angles.sel(qubit=qubit))
+        params = {
+            param: dataset.pdf_1_params.sel(qubit=qubit, param=param)
+            for param in param_names
+        }
+        probs = simple_1d_gaussian_double_mixture(outcomes, **params)
+        probs_1_list.append(probs)
+    probs_1_list = xr.concat(probs_1_list, dim="data_qubit")
+    data_probs = xr.concat([probs_0_list, probs_1_list], dim="state")
 
-    data_meas = data_outcomes > 0
-    data_flips = data_meas ^ dataset.ideal_data_meas
-    log_errors = data_flips.sum(dim="data_qubit") % 2
+    # ancilla qubits
+    probs_0_list = []
+    for qubit in dataset.anc_qubit:
+        outcomes = dataset.anc_meas.sel(anc_qubit=qubit)
+        outcomes = project(outcomes, dataset.rot_angles.sel(qubit=qubit))
+        params = {
+            param: dataset.pdf_0_params.sel(qubit=qubit, param=param)
+            for param in param_names
+        }
+        probs = simple_1d_gaussian_double_mixture(outcomes, **params)
+        probs_0_list.append(probs)
+    probs_0_list = xr.concat(probs_0_list, dim="anc_qubit")
 
-    if to_predict == "log_errors":
-        data_flips = data_meas ^ dataset.ideal_data_meas
-        output = data_flips.sum(dim="data_qubit") % 2
-    elif to_predict == "log_outcomes":
-        output = data_meas.sum(dim="data_qubit") % 2
-    elif to_predict == "log_outcomes_corrected":
-        data = data_meas ^ dataset.ideal_data_meas ^ dataset.data_init
-        output = data.sum(dim="data_qubit") % 2
-    elif to_predict == "initial_states":
-        data = dataset.data_init
-        output = data.sum(dim="data_qubit") % 2
-    else:
-        raise ValueError()
+    probs_1_list = []
+    for qubit in dataset.anc_qubit:
+        outcomes = dataset.anc_meas.sel(anc_qubit=qubit)
+        outcomes = project(outcomes, dataset.rot_angles.sel(qubit=qubit))
+        params = {
+            param: dataset.pdf_1_params.sel(qubit=qubit, param=param)
+            for param in param_names
+        }
+        probs = simple_1d_gaussian_double_mixture(outcomes, **params)
+        probs_1_list.append(probs)
+    probs_1_list = xr.concat(probs_1_list, dim="anc_qubit")
+    anc_probs = xr.concat([probs_0_list, probs_1_list], dim="state")
 
-    if digitization["anc"]:
-        defect_probs = defect_probs > 0.5
-    if digitization["data"]:
-        final_defect_probs = final_defect_probs > 0.5
+    anc_probs = anc_probs / anc_probs.sum(dim="state")
+    data_probs = data_probs / data_probs.sum(dim="state")
 
-    return defect_probs, final_defect_probs, output
+    anc_probs = anc_probs.transpose("state", "shot", "qec_round", "anc_qubit")
+    data_probs = data_probs.transpose("state", "shot", "data_qubit")
+
+    return anc_probs, data_probs

@@ -2,14 +2,9 @@ from ..configs import Config
 from ..layouts import Layout
 from .generators import dataset_generator
 from .preprocessing import (
-    to_defect_probs,
-    to_defects,
-    to_measurements,
     to_model_input,
-    to_syndromes,
     to_defect_probs_experimental,
-    to_defect_probs_leakage_experimental,
-    to_custom,
+    to_defect_probs_leakage_IQ,
 )
 from .sequences import RaggedSequence, Sequence
 
@@ -39,39 +34,19 @@ def load_datasets(
 
     # Convert to desired input
     input_type = config.dataset["input"]
-    if input_type == "measurements":
-        processed_gen = (to_measurements(dataset) for dataset in dataset_gen)
-    elif input_type == "syndromes":
-        processed_gen = (to_syndromes(dataset, proj_matrix) for dataset in dataset_gen)
-    elif input_type == "defects":
-        processed_gen = (to_defects(dataset, proj_matrix) for dataset in dataset_gen)
-    elif input_type == "prob_defects":
-        assign_errors = config.dataset.get("assign_errors")
-        digitization = config.dataset.get("digitization")
-        processed_gen = (
-            to_defect_probs(dataset, proj_matrix, assign_errors, digitization)
-            for dataset in dataset_gen
-        )
-    elif input_type == "prob_defects_exp":
+    if input_type == "prob_defects_exp":
         digitization = config.dataset.get("digitization")
         processed_gen = (
             to_defect_probs_experimental(dataset, proj_matrix, digitization)
             for dataset in dataset_gen
         )
-    elif input_type == "prob_defects_leakage_exp":
+    elif input_type == "IQ":
         digitization = config.dataset.get("digitization")
-        leakage_final = config.dataset.get("leakage_final")
+        leakage = config.dataset.get("leakage")
         processed_gen = (
-            to_defect_probs_leakage_experimental(
-                dataset, proj_matrix, digitization, leakage_final
+            to_defect_probs_leakage_IQ(
+                dataset, proj_matrix, digitization=digitization, leakage=leakage
             )
-            for dataset in dataset_gen
-        )
-    elif input_type == "custom":
-        assign_errors = config.dataset.get("assign_errors")
-        setup = config.dataset.get("setup")
-        processed_gen = (
-            to_custom(dataset, proj_matrix, assign_errors, setup)
             for dataset in dataset_gen
         )
     else:
@@ -83,10 +58,8 @@ def load_datasets(
     # Process for keras.model input
     conv_models = ("ConvLSTM", "Conv_LSTM")
     float_inputs = (
-        "prob_defects",
         "prob_defects_exp",
-        "prob_defects_leakage_exp",
-        "custom",
+        "IQ",
     )
     exp_matrix = layout.expansion_matrix() if (model_type in conv_models) else None
     data_type = float if input_type in float_inputs else bool
