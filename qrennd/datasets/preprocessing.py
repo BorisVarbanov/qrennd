@@ -6,21 +6,8 @@ import xarray as xr
 from scipy.special import erfcinv
 
 
-def dev_from_error(means: Tuple[float, float], error_prob: float) -> float:
-    ground_mean, exc_mean = means
-    midpoint = 0.5 * np.abs(ground_mean - exc_mean)
-    dev = midpoint / (np.sqrt(2) * erfcinv(2 * error_prob))
-    return dev
-
-
 def odd_parity(bits: Sequence[int]) -> int:
     return sum(bits) % 2
-
-
-def norm_pdf(x: np.ndarray, means: Tuple[float, float], dev: float) -> np.ndarray:
-    y = np.subtract(x, means) / dev
-    prob = np.exp(-(y**2) / 2) / np.sqrt(2 * np.pi)
-    return prob / dev
 
 
 def get_syndromes(anc_meas: xr.DataArray) -> xr.DataArray:
@@ -53,122 +40,6 @@ def get_final_defects(
     last_syndromes = syndromes.sel(anc_qubit=anc_qubits, qec_round=last_round)
     defects = last_syndromes ^ proj_syndrome
     return defects
-
-
-def get_state_probs(
-    outcomes: xr.DataArray, means: Tuple[float, float], dev: float
-) -> xr.DataArray:
-    """
-    get_state_probs Calculates the probabilities of the qubit
-    being in a given state (0 or 1) given the soft measurement
-    outcomes.
-
-    Parameters
-    ----------
-    outcomes : xr.DataArray
-        The soft measurement outcomes.
-    means : List[float]
-        The mean of the (projected 1D) Gaussian distributions for each state.
-    dev : float
-        The standard deviation of each Gaussian (assumed to be the same).
-
-    Returns
-    -------
-    xr.DataArray
-        The probabilities of the qubit being in each state given the outcomes.
-    """
-    probs_gen = (norm_pdf(outcomes, mean, dev) for mean in means)
-    outcome_probs = xr.concat(probs_gen, dim="state")
-    state_probs = outcome_probs / outcome_probs.sum(dim="state")
-    return state_probs
-
-
-def get_state_probs_experimental(
-    dataset: xr.Dataset,
-) -> xr.Dataset:
-    """
-    get_state_probs Calculates the probabilities of the qubit
-    being in a given state (0 or 1) given the soft measurement
-    outcomes for the ancilla and the data qubits.
-
-    Parameters
-    ----------
-    outcomes : xr.Dataset
-        The soft measurement outcomes.
-
-    Returns
-    -------
-    anc_probs: xr.Dataset
-        The probabilities of the ancilla qubits being in each state given the outcomes.
-    data_probs: xr.Dataset
-        The probabilities of the data qubits being in each state given the outcomes.
-    """
-
-    # pdf that DiCarlo uses for fitting
-    def _gauss_pdf(x, x0, sigma):
-        return np.exp(-(((x - x0) / sigma) ** 2) / 2) / (np.sqrt(2 * np.pi) * sigma)
-
-    def double_gauss(x, x0, x1, sigma0, sigma1, A, r):
-        _dist0 = (1 - r) * _gauss_pdf(x, x0, sigma0) + r * _gauss_pdf(x, x1, sigma1)
-        return _dist0
-
-    param_names = ["x0", "x1", "sigma0", "sigma1", "A", "r"]
-
-    # data qubits
-    probs_0_list = []
-    for qubit in dataset.data_qubit:
-        outcomes = dataset.data_meas.sel(data_qubit=qubit)
-        params = {
-            param: dataset.pdf_0_params.sel(qubit=qubit, param=param)
-            for param in param_names
-        }
-        probs = double_gauss(outcomes, **params)
-        probs_0_list.append(probs)
-    probs_0_list = xr.concat(probs_0_list, dim="data_qubit")
-
-    probs_1_list = []
-    for qubit in dataset.data_qubit:
-        outcomes = dataset.data_meas.sel(data_qubit=qubit)
-        params = {
-            param: dataset.pdf_1_params.sel(qubit=qubit, param=param)
-            for param in param_names
-        }
-        probs = double_gauss(outcomes, **params)
-        probs_1_list.append(probs)
-    probs_1_list = xr.concat(probs_1_list, dim="data_qubit")
-    data_probs = xr.concat([probs_0_list, probs_1_list], dim="state")
-
-    # ancilla qubits
-    probs_0_list = []
-    for qubit in dataset.anc_qubit:
-        outcomes = dataset.anc_meas.sel(anc_qubit=qubit)
-        params = {
-            param: dataset.pdf_0_params.sel(qubit=qubit, param=param)
-            for param in param_names
-        }
-        probs = double_gauss(outcomes, **params)
-        probs_0_list.append(probs)
-    probs_0_list = xr.concat(probs_0_list, dim="anc_qubit")
-
-    probs_1_list = []
-    for qubit in dataset.anc_qubit:
-        outcomes = dataset.anc_meas.sel(anc_qubit=qubit)
-        params = {
-            param: dataset.pdf_1_params.sel(qubit=qubit, param=param)
-            for param in param_names
-        }
-        probs = double_gauss(outcomes, **params)
-        probs_1_list.append(probs)
-    probs_1_list = xr.concat(probs_1_list, dim="anc_qubit")
-    anc_probs = xr.concat([probs_0_list, probs_1_list], dim="state")
-
-    anc_probs = anc_probs / anc_probs.sum(dim="state")
-    data_probs = data_probs / data_probs.sum(dim="state")
-
-    anc_probs = anc_probs.transpose("state", "shot", "qec_round", "anc_qubit")
-    data_probs = data_probs.transpose("state", "shot", "data_qubit")
-
-    return anc_probs, data_probs
 
 
 def get_defect_probs(
@@ -311,79 +182,6 @@ def to_model_input(
     error_tensor = log_errors.values.astype(data_type)
 
     return rec_tensor, eval_tensor, error_tensor
-
-
-def to_defect_probs_experimental(
-    dataset: xr.Dataset,
-    proj_mat: xr.DataArray,
-    digitization: Optional[Tuple[bool, dict]] = False,
-):
-    """
-    Preprocess dataset to generate the probability of defect
-    based on the soft outcomes and the logical errors.
-
-    Parameters
-    ----------
-    dataset
-        Assumes to have the following variables and dimensions:
-        - anc_meas: [shots, qec_cycle, anc_qubit]
-        - ideal_anc_meas: [qec_cycle, anc_qubit]
-        - data_meas: [shot, data_qubit]
-        - idea_data_meas: [data_qubit]
-        - prob_error: float
-    proj_mat
-        Assumes to have dimensions [data_qubits, stab],
-        where stab correspond to the final stabilizers.
-    digitization
-        Flag for digitizing the defect probability
-    """
-    if isinstance(digitization, bool):
-        digitization = {"anc": digitization, "data": digitization}
-
-    anc_probs, data_probs = get_state_probs_experimental(dataset)
-
-    ideal_syndromes = get_syndromes(dataset.ideal_anc_meas)
-    ideal_defects = get_defects(ideal_syndromes)
-    defect_probs = get_defect_probs(anc_probs, ideal_defects)
-
-    ideal_proj_syndrome = (dataset.ideal_data_meas @ proj_mat) % 2
-    ideal_final_defects = get_final_defects(ideal_syndromes, ideal_proj_syndrome)
-    final_defect_probs = get_final_defect_probs(
-        anc_probs,
-        data_probs,
-        ideal_final_defects=ideal_final_defects,
-        proj_mat=proj_mat,
-    )
-
-    data_meas = digitize_final_measurements(dataset)
-    data_flips = data_meas ^ dataset.ideal_data_meas
-    log_errors = data_flips.sum(dim="data_qubit") % 2
-
-    if digitization["anc"]:
-        defect_probs = defect_probs > 0.5
-    if digitization["data"]:
-        final_defect_probs = final_defect_probs > 0.5
-
-    return defect_probs, final_defect_probs, log_errors
-
-
-def digitize_final_measurements(dataset: xr.Dataset) -> xr.Dataset:
-    """
-    TODO
-    """
-    digitized_list = []
-    for qubit in dataset.data_qubit:
-        outcomes = dataset.data_meas.sel(data_qubit=qubit)
-        threshold = dataset.thresholds.sel(qubit=qubit)
-        params = dataset.pdf_0_params.sel(qubit=qubit).values
-        mu0, mu1 = params[:2]
-        if mu0 > mu1:
-            digitized = outcomes < threshold
-        else:
-            digitized = outcomes > threshold
-        digitized_list.append(digitized)
-    digitized_list = xr.concat(digitized_list, dim="data_qubit")
-    return digitized_list
 
 
 def to_defect_probs_leakage_IQ(

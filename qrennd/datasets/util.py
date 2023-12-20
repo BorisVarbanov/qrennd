@@ -3,7 +3,6 @@ from ..layouts import Layout
 from .generators import dataset_generator
 from .preprocessing import (
     to_model_input,
-    to_defect_probs_experimental,
     to_defect_probs_leakage_IQ,
 )
 from .sequences import RaggedSequence, Sequence
@@ -34,13 +33,7 @@ def load_datasets(
 
     # Convert to desired input
     input_type = config.dataset["input"]
-    if input_type == "prob_defects_exp":
-        digitization = config.dataset.get("digitization")
-        processed_gen = (
-            to_defect_probs_experimental(dataset, proj_matrix, digitization)
-            for dataset in dataset_gen
-        )
-    elif input_type == "IQ":
+    if input_type == "IQ":
         digitization = config.dataset.get("digitization")
         leakage = config.dataset.get("leakage")
         processed_gen = (
@@ -57,10 +50,7 @@ def load_datasets(
 
     # Process for keras.model input
     conv_models = ("ConvLSTM", "Conv_LSTM")
-    float_inputs = (
-        "prob_defects_exp",
-        "IQ",
-    )
+    float_inputs = ("IQ",)
     exp_matrix = layout.expansion_matrix() if (model_type in conv_models) else None
     data_type = float if input_type in float_inputs else bool
     input_gen = (to_model_input(*arrs, exp_matrix, data_type) for arrs in processed_gen)
