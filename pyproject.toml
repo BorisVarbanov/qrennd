@@ -11,9 +11,9 @@ repository = "https://github.com/BorisVarbanov/qrennd"
 keywords = ["quantum", "error correction", "neural network"]
 
 [tool.poetry.dependencies]
-python = "3.8.12"
-numpy = "1.19.5"
-xarray = "0.21.1"
+python = "^3.8.12"
+numpy = "^1.19.5"
+xarray = "^0.21.1"
 pyyaml = "^6.0"
 netcdf4 = "^1.6.2"
 networkx = "^3.0"
@@ -21,8 +21,8 @@ matplotlib = "^3.6.3"
 jupyter = {version = "^1.0.0", optional = true}
 ipykernel = {version = "^6.20.2", optional = true}
 jupytext = {version = "^1.14.4", optional = true}
-tensorflow = {version = "2.4.1", optional = true}
-scipy = "1.9.2"
+tensorflow = {version = "^2.4.1", optional = true}
+scipy = "^1.9.2"
 lmfit = "^1.1.0"
 
 [tool.poetry.extras]
