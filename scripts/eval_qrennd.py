@@ -5,8 +5,7 @@ from datetime import datetime
 
 import xarray as xr
 from qec_util import Layout
-from qec_util.util.syndrome import (get_defects, get_final_defects,
-                                    get_syndromes)
+from qec_util.util.syndrome import get_defects, get_final_defects, get_syndromes
 from tensorflow import keras
 
 from qrennd import Config, get_model

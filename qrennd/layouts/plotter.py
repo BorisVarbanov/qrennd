@@ -1,4 +1,5 @@
 """Layout plotting module."""
+
 import re
 from itertools import combinations
 from typing import Iterable, Optional, Union

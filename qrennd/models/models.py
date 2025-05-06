@@ -66,7 +66,9 @@ def lstm_model(rec_features: int, eval_features: int, config: Config) -> keras.M
     loss_weights = config.train.get("loss_weights")
     metrics = config.train.get("metrics")
 
-    model.compile(optimizer, loss, metrics, loss_weights)
+    model.compile(
+        optimizer=optimizer, loss=loss, metrics=metrics, loss_weights=loss_weights
+    )
 
     if config.init_weights:
         try:
@@ -158,7 +160,9 @@ def convlstm_model(
     loss_weights = config.train.get("loss_weights")
     metrics = config.train.get("metrics")
 
-    model.compile(optimizer, loss, metrics, loss_weights)
+    model.compile(
+        optimizer=optimizer, loss=loss, metrics=metrics, loss_weights=loss_weights
+    )
 
     if config.init_weights:
         try:
@@ -243,7 +247,9 @@ def conv_lstm_model(
     loss_weights = config.train.get("loss_weights")
     metrics = config.train.get("metrics")
 
-    model.compile(optimizer, loss, metrics, loss_weights)
+    model.compile(
+        optimizer=optimizer, loss=loss, metrics=metrics, loss_weights=loss_weights
+    )
 
     if config.init_weights:
         try:
@@ -328,7 +334,9 @@ def lstm_decoder_model(
     loss_weights = config.train.get("loss_weights")
     metrics = config.train.get("metrics")
 
-    model.compile(optimizer, loss, metrics, loss_weights)
+    model.compile(
+        optimizer=optimizer, loss=loss, metrics=metrics, loss_weights=loss_weights
+    )
 
     if config.init_weights:
         try:
