@@ -3,6 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar
+import random
 
 import yaml
 
@@ -28,19 +29,24 @@ class Config:
         data_dir: str,
         output_dir: Optional[str] = None,
         add_timestamp: bool = True,
+        add_unique_identifier: bool = True,
         *,
         seed: Optional[int] = None,
         init_weights: Optional[str] = None,
     ) -> None:
         self.experiment = experiment
 
+        self.run = run
+
+        if add_unique_identifier:
+            alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+            length = 6 # 62^6 ~ 6e10
+            unique_identifier = "".join(random.choice(alphabet) for _ in range(length))
+            self.run = f"{unique_identifier}_{self.run}"
         if add_timestamp:
             current_time = datetime.now()
             timestamp = current_time.strftime("%Y%m%d-%H%M%S")
-
-            self.run = f"{timestamp}_{run}"
-        else:
-            self.run = run
+            self.run = f"{timestamp}_{self.run}"
 
         self.model = setup["model"]
         self.train = setup["train"]
